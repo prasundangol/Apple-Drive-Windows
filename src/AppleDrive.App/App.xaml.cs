@@ -3,6 +3,7 @@ using AppleDrive.Application.Services;
 using AppleDrive.Application.Settings;
 using AppleDrive.App.Services;
 using AppleDrive.Infrastructure;
+using AppleDrive.Infrastructure.Database;
 using AppleDrive.Infrastructure.FileSystem;
 using AppleDrive.Presentation.Services;
 using AppleDrive.Presentation.ViewModels;
@@ -41,6 +42,7 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         _services = ConfigureServices(paths, logLevel);
         logLevel.SetLevel(_services.GetRequiredService<ISettingsService>().Current.LogLevel);
+        MigrateDatabase(_services.GetRequiredService<DatabaseMigrator>());
 
         _window = new MainWindow();
         _window.Closed += (_, _) => Shutdown();
@@ -61,10 +63,28 @@ public partial class App : Microsoft.UI.Xaml.Application
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton<DeviceStatusViewModel>();
         services.AddSingleton<PhoneScanViewModel>();
+        services.AddSingleton<DestinationViewModel>();
         services.AddSingleton<DashboardViewModel>();
         services.AddTransient<SettingsViewModel>();
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+    }
+
+    /// <summary>
+    /// Brings the media index schema up to date before any page uses it. This is fast (it only
+    /// does real work after an app update), so it runs before the window opens.
+    /// </summary>
+    private static void MigrateDatabase(DatabaseMigrator migrator)
+    {
+        try
+        {
+            Task.Run(() => migrator.MigrateAsync(CancellationToken.None)).GetAwaiter().GetResult();
+        }
+        catch (DatabaseException exception)
+        {
+            // The app still opens; index-dependent actions then report a database error.
+            Log.Error(exception, "Media index could not be prepared");
+        }
     }
 
     private void Shutdown()

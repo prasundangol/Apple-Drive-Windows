@@ -71,4 +71,17 @@
   <data name="ImportEmptyBody" xml:space="preserve"><value>Scan your iPhone from the Dashboard to see what will be imported.</value></data>
   <data name="HistoryEmptyTitle" xml:space="preserve"><value>No imports yet</value></data>
   <data name="HistoryEmptyBody" xml:space="preserve"><value>Completed imports will appear here.</value></data>
+  <data name="DestinationCardTitle" xml:space="preserve"><value>Destination</value></data>
+  <data name="DestinationChooseBody" xml:space="preserve"><value>Choose where your photos and videos should be copied.</value></data>
+  <data name="ChooseFolder" xml:space="preserve"><value>Choose folder…</value></data>
+  <data name="ChangeFolder" xml:space="preserve"><value>Change…</value></data>
+  <data name="ScanDestination" xml:space="preserve"><value>Scan destination</value></data>
+  <data name="DestinationScanning" xml:space="preserve"><value>Checking the destination folder…</value></data>
+  <data name="DestinationScanningFormat" xml:space="preserve"><value>{0:N0} files checked</value></data>
+  <data name="DestinationIndexedFormat" xml:space="preserve"><value>{0:N0} photos and videos already in this folder</value></data>
+  <data name="DestinationChangesFormat" xml:space="preserve"><value>{0:N0} new or changed since the last check, {1:N0} no longer found</value></data>
+  <data name="DestinationNeverScanned" xml:space="preserve"><value>Not checked yet. Apple Drive checks the folder so it can skip photos you already have.</value></data>
+  <data name="ErrorDestinationUnavailable" xml:space="preserve"><value>The destination folder isn&apos;t available. If it&apos;s on an external drive, make sure the drive is connected.</value></data>
+  <data name="ErrorAccessDenied" xml:space="preserve"><value>Apple Drive doesn&apos;t have permission to read or write this folder. Choose another folder.</value></data>
+  <data name="ErrorDatabase" xml:space="preserve"><value>Apple Drive&apos;s media index couldn&apos;t be read or updated. Restart the app; if this keeps happening, open the logs from Settings.</value></data>
 </root>

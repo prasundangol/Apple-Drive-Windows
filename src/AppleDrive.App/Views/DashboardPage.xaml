@@ -104,6 +104,111 @@
                 </Grid>
             </Border>
 
+            <!-- Destination -->
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Width="48" VerticalAlignment="Top">
+                        <FontIcon
+                            FontSize="32"
+                            Glyph="&#xEDA2;"
+                            AutomationProperties.AccessibilityView="Raw" />
+                    </Grid>
+
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock
+                            Style="{StaticResource SubtitleTextBlockStyle}"
+                            Text="{x:Bind res:Strings.DestinationCardTitle}"
+                            AutomationProperties.HeadingLevel="Level2" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind res:Strings.DestinationChooseBody}"
+                            TextWrapping="WrapWholeWords"
+                            Visibility="{x:Bind ViewModel.Destination.HasNoFolder, Mode=OneWay}" />
+                        <TextBlock
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="{x:Bind ViewModel.Destination.Folder, Mode=OneWay}"
+                            TextWrapping="Wrap"
+                            Visibility="{x:Bind ViewModel.Destination.HasFolder, Mode=OneWay}" />
+
+                        <StackPanel
+                            Orientation="Horizontal"
+                            Spacing="10"
+                            Visibility="{x:Bind ViewModel.Destination.IsScanning, Mode=OneWay}">
+                            <ProgressRing
+                                Width="16"
+                                Height="16"
+                                IsActive="{x:Bind ViewModel.Destination.IsScanning, Mode=OneWay}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.Destination.ProgressText, Mode=OneWay}"
+                                AutomationProperties.LiveSetting="Polite" />
+                        </StackPanel>
+
+                        <StackPanel Visibility="{x:Bind ViewModel.Destination.HasFolder, Mode=OneWay}">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind ViewModel.Destination.StatusText, Mode=OneWay}"
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind ViewModel.Destination.ChangesText, Mode=OneWay}"
+                                TextWrapping="WrapWholeWords"
+                                Visibility="{x:Bind IsNotEmpty(ViewModel.Destination.ChangesText), Mode=OneWay}" />
+                        </StackPanel>
+
+                        <InfoBar
+                            Margin="0,8,0,0"
+                            IsClosable="False"
+                            IsOpen="{x:Bind ViewModel.Destination.HasError, Mode=OneWay}"
+                            Message="{x:Bind ViewModel.Destination.ErrorMessage, Mode=OneWay}"
+                            Severity="Warning">
+                            <Expander
+                                Margin="0,0,0,12"
+                                HorizontalAlignment="Stretch"
+                                Header="{x:Bind res:Strings.ShowDetails}"
+                                Visibility="{x:Bind IsNotEmpty(ViewModel.Destination.ErrorDetails), Mode=OneWay}">
+                                <TextBlock
+                                    FontFamily="Consolas"
+                                    IsTextSelectionEnabled="True"
+                                    Text="{x:Bind ViewModel.Destination.ErrorDetails, Mode=OneWay}"
+                                    TextWrapping="Wrap" />
+                            </Expander>
+                        </InfoBar>
+                    </StackPanel>
+
+                    <StackPanel
+                        Grid.Column="2"
+                        VerticalAlignment="Top"
+                        Spacing="8">
+                        <Button
+                            Command="{x:Bind ViewModel.Destination.ChooseFolderCommand}"
+                            Content="{x:Bind res:Strings.ChooseFolder}"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Visibility="{x:Bind ViewModel.Destination.HasNoFolder, Mode=OneWay}" />
+                        <Button
+                            Command="{x:Bind ViewModel.Destination.ScanCommand}"
+                            Content="{x:Bind res:Strings.ScanDestination}"
+                            Visibility="{x:Bind ViewModel.Destination.HasFolder, Mode=OneWay}" />
+                        <Button
+                            Command="{x:Bind ViewModel.Destination.ScanCancelCommand}"
+                            Content="{x:Bind res:Strings.Cancel}"
+                            Visibility="{x:Bind ViewModel.Destination.IsScanning, Mode=OneWay}" />
+                        <HyperlinkButton
+                            HorizontalAlignment="Right"
+                            Command="{x:Bind ViewModel.Destination.ChooseFolderCommand}"
+                            Content="{x:Bind res:Strings.ChangeFolder}"
+                            Visibility="{x:Bind ViewModel.Destination.HasFolder, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind res:Strings.DestinationHeader}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Scan progress -->
             <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.Scan.IsScanning, Mode=OneWay}">
                 <Grid ColumnSpacing="16">

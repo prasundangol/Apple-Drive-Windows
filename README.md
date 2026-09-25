@@ -4,7 +4,7 @@ Apple Drive is a Windows desktop app that copies photos and videos from an iPhon
 
 Apple Drive never deletes or changes anything on your iPhone, never overwrites files on your PC, and never sends your photos anywhere. Everything runs locally and offline.
 
-> **Status:** early development. Detecting an iPhone, reading its media, and showing a scan summary works on real hardware. Destination scanning, duplicate detection, and transfers are in progress. See [Roadmap](#roadmap).
+> **Status:** early development. Detecting an iPhone, reading its media, and showing a scan summary works on real hardware. Destination scanning and indexing work too. Duplicate detection and transfers are in progress. See [Roadmap](#roadmap).
 
 ---
 
@@ -127,6 +127,7 @@ All app data lives under `%LOCALAPPDATA%\AppleDrive\`:
 | Path | Contents |
 |---|---|
 | `settings.json` | User preferences (written atomically) |
+| `media-index.db` | Index of destination media (see [Destination scanning](#destination-scanning-and-the-media-index)) |
 | `Logs\apple-drive-YYYYMMDD.log` | Diagnostic logs, 14 days retained. Settings → *Open logs folder*. |
 
 Logs record events (connection, scan counts, errors) but never image data.
@@ -136,6 +137,34 @@ Logs record events (connection, scan counts, errors) but never image data.
 User-facing text lives in `src/AppleDrive.Presentation/Resources/Strings.resx`, accessed through the `Strings` class. XAML binds to it with `{x:Bind res:Strings.Name}`. To add a language, add `Strings.<culture>.resx`. A unit test checks that every string has a resource value.
 
 ---
+
+## Destination scanning and the media index
+
+Apple Drive keeps an index of the photos and videos already in your destination folder, so it doesn't have to re-read the whole drive every time.
+
+- **Scanning** walks the folder recursively and reads file size and timestamps straight from the directory listing (`FileSystemEnumerable`), without opening each file. Unsupported files, `*.partial` files still being copied, system folders, and junctions/symlinks are skipped.
+- **Unchanged files** (same path, size and modification time) keep their stored hashes, so a re-scan of tens of thousands of files takes seconds.
+- **Changed files** have their stored hashes cleared and are re-hashed only when they're needed.
+- **Deleted or moved files** are marked *not available*. They are never removed by a scan. If a file comes back unchanged (for example, an external drive is reconnected), its record and hashes are reused.
+- **Disconnected drives are safe:** files are marked missing only after a *complete* scan succeeds. If the drive is unplugged, the folder is missing, or the scan is cancelled, the index is left as it was.
+
+### Database
+
+SQLite, at `%LOCALAPPDATA%\AppleDrive\media-index.db`, in WAL mode, accessed with Microsoft.Data.Sqlite and Dapper.
+
+`MediaFiles`: `Id`, `FullPath` (unique, case-insensitive), `MediaType`, `FileSize`, `CreatedAt`, `ModifiedAt`, `Width`, `Height`, `CaptureDate`, `Sha256` (32-byte BLOB, computed lazily), `PerceptualHash` (64-bit), `FirstSeenAt`, `LastScannedAt`, `IsAvailable`. Times are UTC Unix milliseconds.
+
+Indexes, each backed by a query-plan test:
+
+| Index | Used for |
+|---|---|
+| `UX_MediaFiles_FullPath` | Path lookups, upserts, and folder-prefix range scans |
+| `IX_MediaFiles_FileSize` (partial, available only) | Finding exact-duplicate candidates by size |
+| `IX_MediaFiles_Sha256` (partial, hashed only) | Confirming duplicates and detecting moved files |
+
+There is deliberately no index on media type, capture date, or perceptual hash. Those aren't queried against the destination table: perceptual matching is a Hamming-distance search done in memory.
+
+**Migrations:** the schema version is stored in `PRAGMA user_version`. Migrations in `Infrastructure/Database/Migrations/Migrations.cs` are forward-only, each runs in its own transaction, and an existing database is backed up to `media-index.db.v<N>.bak` before an upgrade. A database created by a newer app version is refused and left untouched. To change the schema, append a new migration; never edit a released one.
 
 ## Duplicate detection
 
@@ -172,8 +201,8 @@ User-facing text lives in `src/AppleDrive.Presentation/Resources/Strings.resx`, 
 
 1. ✅ Solution, WinUI shell, MVVM, DI, logging, navigation, settings
 2. ✅ iPhone detection and media enumeration (verified on a real iPhone)
-3. Destination folder scanner
-4. SQLite media index with migrations
+3. ✅ Destination folder scanner
+4. ✅ SQLite media index with migrations
 5. SHA-256 exact duplicate detection
 6. Transfer engine
 7. Transfer verification and crash recovery
