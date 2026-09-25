@@ -1,0 +1,56 @@
+# Local-only planning notes (never pushed)
+PROGRESS.md
+
+# Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+AppPackages/
+BundleArtifacts/
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.appxupload
+*.msixupload
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+
+# Local databases and caches
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Signing certificates
+*.pfx
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store

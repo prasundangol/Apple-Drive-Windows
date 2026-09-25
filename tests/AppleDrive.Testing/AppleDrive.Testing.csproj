@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Test doubles shared by the test projects. Never referenced by the shipping app. -->
+  <PropertyGroup>
+    <TargetFramework>$(AppleDriveWindowsTfm)</TargetFramework>
+    <SupportedOSPlatformVersion>$(AppleDriveMinWindows)</SupportedOSPlatformVersion>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AppleDrive.Presentation\AppleDrive.Presentation.csproj" />
+    <ProjectReference Include="..\..\src\AppleDrive.Application\AppleDrive.Application.csproj" />
+  </ItemGroup>
+
+</Project>

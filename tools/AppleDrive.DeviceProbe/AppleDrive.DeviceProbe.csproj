@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$(AppleDriveWindowsTfm)</TargetFramework>
+    <SupportedOSPlatformVersion>$(AppleDriveMinWindows)</SupportedOSPlatformVersion>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AppleDrive.Infrastructure\AppleDrive.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

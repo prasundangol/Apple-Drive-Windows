@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(AppleDriveWindowsTfm)</TargetFramework>
+    <TargetPlatformMinVersion>$(AppleDriveMinWindows)</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>$(AppleDriveMinWindows)</SupportedOSPlatformVersion>
+    <RootNamespace>AppleDrive.App</RootNamespace>
+    <AssemblyName>AppleDrive</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+
+    <!-- Unpackaged, self-contained Windows App SDK: runs without installing the runtime. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <!-- Platform may arrive as a read-only global property (e.g. AnyCPU from the solution), so map it. -->
+    <AppleDriveArchitecture Condition="'$(Platform)' == 'ARM64'">arm64</AppleDriveArchitecture>
+    <AppleDriveArchitecture Condition="'$(AppleDriveArchitecture)' == ''">x64</AppleDriveArchitecture>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$(AppleDriveArchitecture)</RuntimeIdentifier>
+    <PlatformTarget>$(AppleDriveArchitecture)</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AppleDrive.Presentation\AppleDrive.Presentation.csproj" />
+    <ProjectReference Include="..\AppleDrive.Infrastructure\AppleDrive.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+</Project>

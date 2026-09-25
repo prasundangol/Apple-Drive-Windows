@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AppleDrive.App/AppleDrive.App.csproj" />
+    <Project Path="src/AppleDrive.Application/AppleDrive.Application.csproj" />
+    <Project Path="src/AppleDrive.Domain/AppleDrive.Domain.csproj" />
+    <Project Path="src/AppleDrive.Infrastructure/AppleDrive.Infrastructure.csproj" />
+    <Project Path="src/AppleDrive.Presentation/AppleDrive.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AppleDrive.IntegrationTests/AppleDrive.IntegrationTests.csproj" />
+    <Project Path="tests/AppleDrive.Testing/AppleDrive.Testing.csproj" />
+    <Project Path="tests/AppleDrive.UnitTests/AppleDrive.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/AppleDrive.DeviceProbe/AppleDrive.DeviceProbe.csproj" />
+  </Folder>
+</Solution>

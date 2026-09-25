@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="AppleDrive.App.Views.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:res="using:AppleDrive.Presentation.Resources">
+
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="960"
+            Padding="32,24,32,32"
+            Spacing="16">
+            <TextBlock
+                Style="{StaticResource PageTitleStyle}"
+                Text="{x:Bind res:Strings.NavDashboard}"
+                AutomationProperties.HeadingLevel="Level1" />
+
+            <!-- Device status -->
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Width="48" VerticalAlignment="Top">
+                        <FontIcon
+                            FontSize="36"
+                            Glyph="&#xE8EA;"
+                            AutomationProperties.AccessibilityView="Raw" />
+                        <ProgressRing
+                            Width="48"
+                            Height="48"
+                            IsActive="{x:Bind ViewModel.Device.IsSearching, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.Device.IsSearching, Mode=OneWay}" />
+                    </Grid>
+
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock
+                            Style="{StaticResource SubtitleTextBlockStyle}"
+                            Text="{x:Bind ViewModel.Device.Title, Mode=OneWay}"
+                            TextWrapping="WrapWholeWords"
+                            AutomationProperties.HeadingLevel="Level2"
+                            AutomationProperties.LiveSetting="Polite" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind ViewModel.Device.Message, Mode=OneWay}"
+                            TextWrapping="WrapWholeWords"
+                            Visibility="{x:Bind IsNotEmpty(ViewModel.Device.Message), Mode=OneWay}" />
+
+                        <Grid
+                            ColumnSpacing="12"
+                            RowSpacing="2"
+                            Visibility="{x:Bind ViewModel.Device.IsConnected, Mode=OneWay}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.DeviceLabel}" />
+                            <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.Device.DeviceName, Mode=OneWay}" />
+                            <TextBlock Grid.Row="1" Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.StatusLabel}" />
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                <FontIcon
+                                    FontSize="14"
+                                    Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                    Glyph="&#xE73E;"
+                                    AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock Text="{x:Bind res:Strings.StatusConnected}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Expander
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Stretch"
+                            Header="{x:Bind res:Strings.ShowDetails}"
+                            Visibility="{x:Bind ViewModel.Device.HasDetails, Mode=OneWay}">
+                            <TextBlock
+                                FontFamily="Consolas"
+                                IsTextSelectionEnabled="True"
+                                Text="{x:Bind ViewModel.Device.Details, Mode=OneWay}"
+                                TextWrapping="Wrap" />
+                        </Expander>
+                    </StackPanel>
+
+                    <StackPanel
+                        Grid.Column="2"
+                        VerticalAlignment="Top"
+                        Spacing="8">
+                        <Button
+                            Command="{x:Bind ViewModel.Scan.ScanCommand}"
+                            Content="{x:Bind res:Strings.ScanPhotos}"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Visibility="{x:Bind ViewModel.Device.IsConnected, Mode=OneWay}" />
+                        <Button
+                            Command="{x:Bind ViewModel.Device.RefreshCommand}"
+                            Content="{x:Bind res:Strings.Refresh}"
+                            Visibility="{x:Bind ViewModel.Device.IsNotConnected, Mode=OneWay}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Scan progress -->
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.Scan.IsScanning, Mode=OneWay}">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ProgressRing IsActive="{x:Bind ViewModel.Scan.IsScanning, Mode=OneWay}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind res:Strings.Scanning}" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind ViewModel.Scan.ProgressText, Mode=OneWay}"
+                            AutomationProperties.LiveSetting="Polite" />
+                    </StackPanel>
+                    <Button
+                        Grid.Column="2"
+                        Command="{x:Bind ViewModel.Scan.ScanCancelCommand}"
+                        Content="{x:Bind res:Strings.Cancel}" />
+                </Grid>
+            </Border>
+
+            <!-- Scan error -->
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.Scan.HasError, Mode=OneWay}"
+                Message="{x:Bind ViewModel.Scan.ErrorMessage, Mode=OneWay}"
+                Severity="Warning">
+                <Expander
+                    Margin="0,0,0,12"
+                    HorizontalAlignment="Stretch"
+                    Header="{x:Bind res:Strings.ShowDetails}"
+                    Visibility="{x:Bind IsNotEmpty(ViewModel.Scan.ErrorDetails), Mode=OneWay}">
+                    <TextBlock
+                        FontFamily="Consolas"
+                        IsTextSelectionEnabled="True"
+                        Text="{x:Bind ViewModel.Scan.ErrorDetails, Mode=OneWay}"
+                        TextWrapping="Wrap" />
+                </Expander>
+            </InfoBar>
+
+            <!-- Scan result -->
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.Scan.HasMedia, Mode=OneWay}">
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                        Text="{x:Bind res:Strings.ScanCompleteTitle}"
+                        AutomationProperties.HeadingLevel="Level2" />
+                    <VariableSizedWrapGrid ItemWidth="160" Orientation="Horizontal">
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Scan.PhotoCount.ToString('N0', x:Null), Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.PhotosLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Scan.LivePhotoCount.ToString('N0', x:Null), Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.LivePhotosLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Scan.VideoCount.ToString('N0', x:Null), Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.VideosLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Scan.FileCount.ToString('N0', x:Null), Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.FilesLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Scan.TotalSize, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.TotalSizeLabel}" />
+                        </StackPanel>
+                    </VariableSizedWrapGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- Empty result -->
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.Scan.IsEmpty, Mode=OneWay}">
+                <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind res:Strings.ScanNoMedia}" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind res:Strings.ScanNoMediaBody}"
+                        TextWrapping="WrapWholeWords" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
