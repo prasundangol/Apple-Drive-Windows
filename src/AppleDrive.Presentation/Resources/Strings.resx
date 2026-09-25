@@ -67,8 +67,6 @@
   <data name="PrivacyBody" xml:space="preserve"><value>Your photos never leave this computer. Apple Drive works fully offline and sends no data anywhere.</value></data>
   <data name="AboutHeader" xml:space="preserve"><value>About</value></data>
   <data name="VersionFormat" xml:space="preserve"><value>Version {0}</value></data>
-  <data name="ImportEmptyTitle" xml:space="preserve"><value>Nothing to review yet</value></data>
-  <data name="ImportEmptyBody" xml:space="preserve"><value>Scan your iPhone from the Dashboard to see what will be imported.</value></data>
   <data name="HistoryEmptyTitle" xml:space="preserve"><value>No imports yet</value></data>
   <data name="HistoryEmptyBody" xml:space="preserve"><value>Completed imports will appear here.</value></data>
   <data name="DestinationCardTitle" xml:space="preserve"><value>Destination</value></data>
@@ -84,4 +82,23 @@
   <data name="ErrorDestinationUnavailable" xml:space="preserve"><value>The destination folder isn&apos;t available. If it&apos;s on an external drive, make sure the drive is connected.</value></data>
   <data name="ErrorAccessDenied" xml:space="preserve"><value>Apple Drive doesn&apos;t have permission to read or write this folder. Choose another folder.</value></data>
   <data name="ErrorDatabase" xml:space="preserve"><value>Apple Drive&apos;s media index couldn&apos;t be read or updated. Restart the app; if this keeps happening, open the logs from Settings.</value></data>
+  <data name="ImportIntroTitle" xml:space="preserve"><value>Check what's new</value></data>
+  <data name="ImportIntroBody" xml:space="preserve"><value>Apple Drive compares your iPhone with the destination folder, so only photos and videos you don't already have are copied. Nothing is copied until you confirm.</value></data>
+  <data name="CheckForNewPhotos" xml:space="preserve"><value>Check for new photos</value></data>
+  <data name="ImportNeedsDevice" xml:space="preserve"><value>Connect and unlock your iPhone to continue.</value></data>
+  <data name="ImportNeedsDestination" xml:space="preserve"><value>Choose a destination folder on the Dashboard to continue.</value></data>
+  <data name="StageScanningPhone" xml:space="preserve"><value>Reading your iPhone…</value></data>
+  <data name="StageScanningDestination" xml:space="preserve"><value>Checking the destination folder…</value></data>
+  <data name="StageCheckingDuplicates" xml:space="preserve"><value>Comparing photos…</value></data>
+  <data name="StageCountFormat" xml:space="preserve"><value>{0:N0} files</value></data>
+  <data name="StageProgressFormat" xml:space="preserve"><value>{0:N0} of {1:N0}</value></data>
+  <data name="TotalOnIphoneLabel" xml:space="preserve"><value>Total on iPhone</value></data>
+  <data name="NewLabel" xml:space="preserve"><value>New</value></data>
+  <data name="ExactDuplicatesLabel" xml:space="preserve"><value>Already in destination</value></data>
+  <data name="TransferSizeLabel" xml:space="preserve"><value>To copy</value></data>
+  <data name="DestinationLabel" xml:space="preserve"><value>Destination</value></data>
+  <data name="UnverifiedFormat" xml:space="preserve"><value>{0:N0} files couldn't be read to compare, so they're treated as new and will be copied.</value></data>
+  <data name="NothingNewTitle" xml:space="preserve"><value>No new photos to transfer</value></data>
+  <data name="NothingNewBody" xml:space="preserve"><value>Everything available on the iPhone already exists in the selected destination.</value></data>
+  <data name="CheckAgain" xml:space="preserve"><value>Check again</value></data>
 </root>

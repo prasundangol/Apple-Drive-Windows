@@ -90,6 +90,22 @@ public sealed class MediaRepository(SqliteDatabase database) : IMediaRepository
     public Task DeleteAsync(long id, CancellationToken cancellationToken) =>
         ExecuteAsync("DELETE FROM MediaFiles WHERE Id = @id", new { id }, cancellationToken);
 
+    public async Task<int> DeleteUnavailableBySha256Async(byte[] sha256, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = await database.OpenAsync(cancellationToken).ConfigureAwait(false);
+            return await connection.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM MediaFiles WHERE Sha256 = @sha256 AND IsAvailable = 0",
+                new { sha256 },
+                cancellationToken: cancellationToken)).ConfigureAwait(false);
+        }
+        catch (SqliteException exception)
+        {
+            throw new DatabaseException("Updating the media index failed.", exception);
+        }
+    }
+
     public Task TouchScannedAsync(string root, DateTimeOffset scannedAt, CancellationToken cancellationToken)
     {
         var (low, high) = PrefixRange(root);

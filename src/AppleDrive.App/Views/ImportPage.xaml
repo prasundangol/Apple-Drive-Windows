@@ -5,19 +5,158 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:res="using:AppleDrive.Presentation.Resources">
 
-    <StackPanel MaxWidth="960" Padding="32,24,32,32" Spacing="16">
-        <TextBlock
-            Style="{StaticResource PageTitleStyle}"
-            Text="{x:Bind res:Strings.NavImport}"
-            AutomationProperties.HeadingLevel="Level1" />
-        <Border Style="{StaticResource CardStyle}">
-            <StackPanel Spacing="4">
-                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind res:Strings.ImportEmptyTitle}" />
-                <TextBlock
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="{x:Bind res:Strings.ImportEmptyBody}"
-                    TextWrapping="WrapWholeWords" />
-            </StackPanel>
-        </Border>
-    </StackPanel>
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="960"
+            Padding="32,24,32,32"
+            Spacing="16">
+            <TextBlock
+                Style="{StaticResource PageTitleStyle}"
+                Text="{x:Bind res:Strings.NavImport}"
+                AutomationProperties.HeadingLevel="Level1" />
+
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.HasPrerequisiteMessage, Mode=OneWay}"
+                Message="{x:Bind ViewModel.PrerequisiteMessage, Mode=OneWay}"
+                Severity="Informational" />
+
+            <!-- Before the first analysis -->
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.ShowIntro, Mode=OneWay}">
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                        Text="{x:Bind res:Strings.ImportIntroTitle}"
+                        AutomationProperties.HeadingLevel="Level2" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind res:Strings.ImportIntroBody}"
+                        TextWrapping="WrapWholeWords" />
+                    <Button
+                        Margin="0,8,0,0"
+                        Command="{x:Bind ViewModel.AnalyzeCommand}"
+                        Content="{x:Bind res:Strings.CheckForNewPhotos}"
+                        Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Analysis in progress -->
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.IsAnalyzing, Mode=OneWay}">
+                <Grid ColumnSpacing="16" RowSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Text="{x:Bind ViewModel.StageText, Mode=OneWay}"
+                        AutomationProperties.LiveSetting="Polite" />
+                    <ProgressBar
+                        Grid.Row="1"
+                        IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
+                        Maximum="100"
+                        Value="{x:Bind ViewModel.ProgressPercent, Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind ViewModel.StageText, Mode=OneWay}" />
+                    <TextBlock
+                        Grid.Row="2"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind ViewModel.StageDetail, Mode=OneWay}" />
+                    <Button
+                        Grid.RowSpan="3"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Command="{x:Bind ViewModel.AnalyzeCancelCommand}"
+                        Content="{x:Bind res:Strings.Cancel}" />
+                </Grid>
+            </Border>
+
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                Severity="Warning">
+                <Expander
+                    Margin="0,0,0,12"
+                    HorizontalAlignment="Stretch"
+                    Header="{x:Bind res:Strings.ShowDetails}"
+                    Visibility="{x:Bind IsNotEmpty(ViewModel.ErrorDetails), Mode=OneWay}">
+                    <TextBlock
+                        FontFamily="Consolas"
+                        IsTextSelectionEnabled="True"
+                        Text="{x:Bind ViewModel.ErrorDetails, Mode=OneWay}"
+                        TextWrapping="Wrap" />
+                </Expander>
+            </InfoBar>
+
+            <!-- Result -->
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.HasPlan, Mode=OneWay}">
+                <StackPanel Spacing="16">
+                    <Grid>
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Style="{StaticResource SubtitleTextBlockStyle}"
+                            Text="{x:Bind res:Strings.ScanCompleteTitle}"
+                            AutomationProperties.HeadingLevel="Level2" />
+                        <Button
+                            HorizontalAlignment="Right"
+                            Command="{x:Bind ViewModel.AnalyzeCommand}"
+                            Content="{x:Bind res:Strings.CheckAgain}" />
+                    </Grid>
+
+                    <VariableSizedWrapGrid ItemWidth="170" Orientation="Horizontal">
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.TotalText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.TotalOnIphoneLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon FontSize="16" Glyph="&#xE73E;" AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.NewText, Mode=OneWay}" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.NewLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon FontSize="16" Glyph="&#xE8C8;" AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.DuplicateText, Mode=OneWay}" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.ExactDuplicatesLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.VideoText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.VideosLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.TransferSizeText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.TransferSizeLabel}" />
+                        </StackPanel>
+                    </VariableSizedWrapGrid>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.DestinationLabel}" />
+                        <TextBlock IsTextSelectionEnabled="True" Text="{x:Bind ViewModel.DestinationText, Mode=OneWay}" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <InfoBar
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.HasUnverified, Mode=OneWay}"
+                        Message="{x:Bind ViewModel.UnverifiedText, Mode=OneWay}"
+                        Severity="Informational" />
+
+                    <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.HasNothingNew, Mode=OneWay}">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind res:Strings.NothingNewTitle}" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind res:Strings.NothingNewBody}"
+                            TextWrapping="WrapWholeWords" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 </Page>

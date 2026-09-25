@@ -75,6 +75,19 @@ public sealed class InMemoryMediaRepository : IMediaRepository
         return Task.CompletedTask;
     }
 
+    public Task<int> DeleteUnavailableBySha256Async(byte[] sha256, CancellationToken cancellationToken)
+    {
+        var matches = _byPath.Values
+            .Where(file => !file.IsAvailable && file.Sha256 is { } hash && hash.AsSpan().SequenceEqual(sha256))
+            .ToList();
+        foreach (var match in matches)
+        {
+            _byPath.Remove(match.FullPath);
+        }
+
+        return Task.FromResult(matches.Count);
+    }
+
     public Task TouchScannedAsync(string root, DateTimeOffset scannedAt, CancellationToken cancellationToken) => Task.CompletedTask;
 
     private Task Update(long id, Func<IndexedMediaFile, IndexedMediaFile> change)

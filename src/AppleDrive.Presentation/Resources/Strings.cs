@@ -141,10 +141,6 @@ public static class Strings
 
     public static string VersionFormat => Get();
 
-    public static string ImportEmptyTitle => Get();
-
-    public static string ImportEmptyBody => Get();
-
     public static string HistoryEmptyTitle => Get();
 
     public static string HistoryEmptyBody => Get();
@@ -174,6 +170,44 @@ public static class Strings
     public static string ErrorAccessDenied => Get();
 
     public static string ErrorDatabase => Get();
+
+    public static string ImportIntroTitle => Get();
+
+    public static string ImportIntroBody => Get();
+
+    public static string CheckForNewPhotos => Get();
+
+    public static string ImportNeedsDevice => Get();
+
+    public static string ImportNeedsDestination => Get();
+
+    public static string StageScanningPhone => Get();
+
+    public static string StageScanningDestination => Get();
+
+    public static string StageCheckingDuplicates => Get();
+
+    public static string StageCountFormat => Get();
+
+    public static string StageProgressFormat => Get();
+
+    public static string TotalOnIphoneLabel => Get();
+
+    public static string NewLabel => Get();
+
+    public static string ExactDuplicatesLabel => Get();
+
+    public static string TransferSizeLabel => Get();
+
+    public static string DestinationLabel => Get();
+
+    public static string UnverifiedFormat => Get();
+
+    public static string NothingNewTitle => Get();
+
+    public static string NothingNewBody => Get();
+
+    public static string CheckAgain => Get();
 
     /// <summary>Formats a resource string with the current culture.</summary>
     public static string Format(string format, params object?[] arguments) =>

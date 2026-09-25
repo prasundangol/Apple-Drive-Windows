@@ -4,7 +4,7 @@ Apple Drive is a Windows desktop app that copies photos and videos from an iPhon
 
 Apple Drive never deletes or changes anything on your iPhone, never overwrites files on your PC, and never sends your photos anywhere. Everything runs locally and offline.
 
-> **Status:** early development. Detecting an iPhone, reading its media, and showing a scan summary works on real hardware. Destination scanning and indexing work too. Duplicate detection and transfers are in progress. See [Roadmap](#roadmap).
+> **Status:** early development. Detecting an iPhone, reading its media, and showing a scan summary works on real hardware. Destination scanning, indexing and exact duplicate detection work too. Transfers are in progress. See [Roadmap](#roadmap).
 
 ---
 
@@ -168,11 +168,20 @@ There is deliberately no index on media type, capture date, or perceptual hash. 
 
 ## Duplicate detection
 
-*(In progress.)* Planned design:
+**Import → Check for new photos** scans the iPhone, updates the destination index, then classifies every item. Nothing is copied until you confirm.
 
-1. **Metadata pre-filter:** only destination files with the same byte size (and media type) can be exact duplicates.
-2. **SHA-256:** exact duplicates are confirmed by content hash. Only byte-for-byte identical files are skipped automatically.
-3. **Perceptual hash (images only):** visually similar images (resized, recompressed, HEIC vs JPEG) are flagged as *possible duplicates* and always shown to you for a decision. They are never skipped silently.
+1. **Size pre-filter.** Only a destination file with exactly the same byte size can be identical. A phone file whose size matches nothing in the destination is **new** and is never read. On a typical phone that rules out almost everything instantly.
+2. **SHA-256 confirmation.** When sizes match, the phone file is read and hashed, and so is each same-size destination file. Destination hashes are stored in the index and reused while the file is unchanged, so they're computed only once. A file is an **exact duplicate** only when the digests are equal. A matching name, size or date alone never makes a duplicate.
+3. **Safety rules:**
+   - A destination file that changed after it was indexed is not trusted as a match.
+   - A phone file that can't be read to compare is treated as **new**, and the summary says how many.
+   - If the phone reports a wrong size (on-the-fly HEIC→JPEG conversion), the file is treated as **new**, never as a duplicate. The transfer engine re-checks by hash after copying.
+   - If the phone disconnects mid-check, the check stops with an error.
+4. **Live Photos** count as already imported only when *both* the image and the video exist. If only one does, the item is new and only the missing part is copied.
+5. **Moved files:** when a hash matches a record that is no longer found at its old path, the stale record is removed.
+6. **Perceptual hash (images only), coming in phase 8:** visually similar images (resized, recompressed, HEIC vs JPEG) will be flagged as *possible duplicates* and always shown to you for a decision. They are never skipped silently.
+
+Tested on a real iPhone (441 items, 477 files) against a folder of 12 files copied from it, one renamed and one with a single byte changed. The check read only the 12 phone files that shared a size with a destination file and finished in under a second. The renamed copy was matched and the altered file was classified as new.
 
 ## Transfer safety
 
@@ -203,7 +212,7 @@ There is deliberately no index on media type, capture date, or perceptual hash. 
 2. ✅ iPhone detection and media enumeration (verified on a real iPhone)
 3. ✅ Destination folder scanner
 4. ✅ SQLite media index with migrations
-5. SHA-256 exact duplicate detection
+5. ✅ SHA-256 exact duplicate detection
 6. Transfer engine
 7. Transfer verification and crash recovery
 8. Perceptual hashing

@@ -1,8 +1,9 @@
 // Diagnostic tool: proves the Windows -> iPhone path end to end without the UI.
 // Lists portable devices, connects to the first iPhone, enumerates media, and reads a few
-// files fully (in memory only; nothing is written to disk or changed on the phone).
+// files fully (in memory; with --copy-to they are also saved to that folder, never overwriting).
+// Nothing on the phone is ever changed.
 //
-// Usage: AppleDrive.DeviceProbe [--read <count>]
+// Usage: AppleDrive.DeviceProbe [--read <count>] [--copy-to <folder>]
 
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -13,11 +14,17 @@ using AppleDrive.Infrastructure.Iphone.Wpd;
 using AppleDrive.Tools.DeviceProbe;
 
 var readCount = 3;
+string? copyTo = null;
 for (var index = 0; index < args.Length - 1; index++)
 {
     if (args[index] == "--read" && int.TryParse(args[index + 1], out var parsed))
     {
         readCount = Math.Max(0, parsed);
+    }
+
+    if (args[index] == "--copy-to")
+    {
+        copyTo = Directory.CreateDirectory(args[index + 1]).FullName;
     }
 }
 
@@ -124,6 +131,9 @@ if (readCount > 0)
         }
 
         await using var stream = open.Value;
+        await using var copy = copyTo is null
+            ? null
+            : new FileStream(Path.Combine(copyTo, asset.FileName), FileMode.CreateNew, FileAccess.Write);
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var buffer = new byte[stream is WpdReadStream wpd ? wpd.OptimalBufferSize : 256 * 1024];
         var header = new byte[16];
@@ -139,6 +149,10 @@ if (readCount > 0)
                 }
 
                 sha.AppendData(buffer, 0, read);
+                if (copy is not null)
+                {
+                    await copy.WriteAsync(buffer.AsMemory(0, read));
+                }
                 total += read;
             }
         }
@@ -164,5 +178,5 @@ if (readCount > 0)
 }
 
 Console.WriteLine();
-Console.WriteLine("Done. Nothing was written or modified.");
+Console.WriteLine(copyTo is null ? "Done. Nothing was written or modified." : $"Done. Copies written to {copyTo}; nothing on the phone was modified.");
 return 0;

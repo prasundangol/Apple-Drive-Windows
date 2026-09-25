@@ -31,8 +31,11 @@ public sealed class FakeIPhonePhotoSource : IPhonePhotoSource
 
     public int MaxConcurrentStreams { get; private set; }
 
+    /// <summary>Number of times any file was opened for reading.</summary>
+    public int OpenCount { get; private set; }
+
     /// <summary>Adds a file to the fake phone and returns its asset.</summary>
-    public PhotoAsset AddFile(string sourcePath, byte[] content, DateTimeOffset? createdAt = null, long? reportedSize = null)
+    public PhotoAsset AddFile(string sourcePath, byte[] content, DateTimeOffset? createdAt = null, long? reportedSize = null, bool reportsSize = true)
     {
         var fileName = sourcePath[(sourcePath.LastIndexOf('/') + 1)..];
         var asset = new PhotoAsset
@@ -42,7 +45,7 @@ public sealed class FakeIPhonePhotoSource : IPhonePhotoSource
             FileName = fileName,
             SourcePath = sourcePath,
             MediaType = MediaFormats.GetMediaType(fileName),
-            ReportedSize = reportedSize ?? content.LongLength,
+            ReportedSize = reportsSize ? reportedSize ?? content.LongLength : null,
             CreatedAt = createdAt,
             MimeType = MediaFormats.GetMimeType(fileName),
         };
@@ -111,6 +114,7 @@ public sealed class FakeIPhonePhotoSource : IPhonePhotoSource
             return Task.FromResult(Result<Stream>.Failure(new AppError(ErrorKind.SourceUnavailable, "No such object.")));
         }
 
+        OpenCount++;
         var open = Interlocked.Increment(ref _openStreams);
         MaxConcurrentStreams = Math.Max(MaxConcurrentStreams, open);
         Stream stream = new FakeDeviceStream(file, () => Interlocked.Decrement(ref _openStreams));

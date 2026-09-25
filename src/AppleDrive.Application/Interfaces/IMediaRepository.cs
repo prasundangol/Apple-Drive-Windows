@@ -31,6 +31,12 @@ public interface IMediaRepository
     /// <summary>Removes a record, used when a file is known to have moved to another indexed path.</summary>
     Task DeleteAsync(long id, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Removes unavailable records with this content hash. Called once the same content has been
+    /// found at an available path, i.e. the file was moved. Returns the number removed.
+    /// </summary>
+    Task<int> DeleteUnavailableBySha256Async(byte[] sha256, CancellationToken cancellationToken);
+
     /// <summary>Stamps <c>LastScannedAt</c> on every available record under <paramref name="root"/>.</summary>
     Task TouchScannedAsync(string root, DateTimeOffset scannedAt, CancellationToken cancellationToken);
 }

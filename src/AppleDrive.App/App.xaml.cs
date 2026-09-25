@@ -58,12 +58,12 @@ public partial class App : Microsoft.UI.Xaml.Application
         services.AddSingleton(logLevel);
         services.AddSingleton<IUiDispatcher>(new UiDispatcher(DispatcherQueue.GetForCurrentThread()));
         services.AddSingleton<IShellServices, ShellServices>();
-        services.AddSingleton<ImportSession>();
 
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton<DeviceStatusViewModel>();
         services.AddSingleton<PhoneScanViewModel>();
         services.AddSingleton<DestinationViewModel>();
+        services.AddSingleton<ImportViewModel>();
         services.AddSingleton<DashboardViewModel>();
         services.AddTransient<SettingsViewModel>();
 
