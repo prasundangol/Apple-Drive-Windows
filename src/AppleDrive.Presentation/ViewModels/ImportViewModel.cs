@@ -22,9 +22,11 @@ public sealed partial class ImportViewModel : ObservableObject
         ImportSession session,
         ISettingsService settings,
         DeviceStatusViewModel device,
+        TransferViewModel transfer,
         IUiDispatcher dispatcher)
     {
         _analysis = analysis;
+        Transfer = transfer;
         _session = session;
         _settings = settings;
         _device = device;
@@ -32,9 +34,21 @@ public sealed partial class ImportViewModel : ObservableObject
         device.ConnectionChanged += (_, _) => RefreshPrerequisites();
         settings.SettingsChanged += (_, _) => dispatcher.Post(RefreshPrerequisites);
         session.Changed += (_, _) => dispatcher.Post(() => ApplyPlan(session.Plan));
+        transfer.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TransferViewModel.State))
+            {
+                OnPropertyChanged(nameof(ShowIntro));
+                OnPropertyChanged(nameof(ShowPlan));
+                AnalyzeCommand.NotifyCanExecuteChanged();
+            }
+        };
         RefreshPrerequisites();
         ApplyPlan(session.Plan);
     }
+
+    /// <summary>Transfer confirmation, progress and summary.</summary>
+    public TransferViewModel Transfer { get; }
 
     /// <summary>What the user must do before analysing, or empty when ready.</summary>
     [ObservableProperty]
@@ -70,14 +84,17 @@ public sealed partial class ImportViewModel : ObservableObject
     public bool HasError => ErrorMessage.Length > 0;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPlan), nameof(HasNothingNew), nameof(ShowIntro))]
+    [NotifyPropertyChangedFor(nameof(HasPlan), nameof(HasNothingNew), nameof(ShowIntro), nameof(ShowPlan))]
     public partial ImportPlan? Plan { get; private set; }
 
     public bool HasPlan => Plan is not null;
 
     public bool HasNothingNew => Plan is { TotalCount: > 0, NewCount: 0 };
 
-    public bool ShowIntro => Plan is null && !IsAnalyzing;
+    public bool ShowIntro => Plan is null && !IsAnalyzing && Transfer.IsIdle;
+
+    /// <summary>The analysis result, shown until a transfer starts.</summary>
+    public bool ShowPlan => HasPlan && Transfer.IsIdle;
 
     [ObservableProperty]
     public partial string TotalText { get; private set; } = string.Empty;
@@ -103,7 +120,7 @@ public sealed partial class ImportViewModel : ObservableObject
 
     public bool HasUnverified => UnverifiedText.Length > 0;
 
-    private bool CanAnalyze() => !IsAnalyzing && PrerequisiteMessage.Length == 0;
+    private bool CanAnalyze() => !IsAnalyzing && PrerequisiteMessage.Length == 0 && Transfer.IsIdle;
 
     [RelayCommand(CanExecute = nameof(CanAnalyze), IncludeCancelCommand = true)]
     private async Task AnalyzeAsync(CancellationToken cancellationToken)

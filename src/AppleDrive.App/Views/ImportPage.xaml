@@ -3,7 +3,8 @@
     x:Class="AppleDrive.App.Views.ImportPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:res="using:AppleDrive.Presentation.Resources">
+    xmlns:res="using:AppleDrive.Presentation.Resources"
+    xmlns:vm="using:AppleDrive.Presentation.ViewModels">
 
     <ScrollViewer>
         <StackPanel
@@ -94,7 +95,7 @@
             </InfoBar>
 
             <!-- Result -->
-            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.HasPlan, Mode=OneWay}">
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.ShowPlan, Mode=OneWay}">
                 <StackPanel Spacing="16">
                     <Grid>
                         <TextBlock
@@ -154,6 +155,180 @@
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Text="{x:Bind res:Strings.NothingNewBody}"
                             TextWrapping="WrapWholeWords" />
+                    </StackPanel>
+
+                    <Button
+                        Command="{x:Bind ViewModel.Transfer.StartCommand}"
+                        Content="{x:Bind res:Strings.StartTransfer}"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Visibility="{x:Bind IsFalse(ViewModel.HasNothingNew), Mode=OneWay}" />
+                </StackPanel>
+            </Border>
+
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.Transfer.HasError, Mode=OneWay}"
+                Message="{x:Bind ViewModel.Transfer.ErrorMessage, Mode=OneWay}"
+                Severity="Warning">
+                <Expander
+                    Margin="0,0,0,12"
+                    HorizontalAlignment="Stretch"
+                    Header="{x:Bind res:Strings.ShowDetails}"
+                    Visibility="{x:Bind IsNotEmpty(ViewModel.Transfer.ErrorDetails), Mode=OneWay}">
+                    <TextBlock
+                        FontFamily="Consolas"
+                        IsTextSelectionEnabled="True"
+                        Text="{x:Bind ViewModel.Transfer.ErrorDetails, Mode=OneWay}"
+                        TextWrapping="Wrap" />
+                </Expander>
+            </InfoBar>
+
+            <!-- Transfer in progress -->
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.Transfer.IsTransferring, Mode=OneWay}">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Style="{StaticResource SubtitleTextBlockStyle}"
+                            Text="{x:Bind res:Strings.Transferring}"
+                            AutomationProperties.HeadingLevel="Level2" />
+                        <Button
+                            HorizontalAlignment="Right"
+                            Command="{x:Bind ViewModel.Transfer.CancelCommand}"
+                            Content="{x:Bind res:Strings.Cancel}" />
+                    </Grid>
+
+                    <StackPanel Spacing="4">
+                        <Grid>
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.Transfer.ItemsText, Mode=OneWay}" />
+                            <TextBlock
+                                HorizontalAlignment="Right"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind ViewModel.Transfer.BytesText, Mode=OneWay}" />
+                        </Grid>
+                        <ProgressBar
+                            Maximum="100"
+                            Value="{x:Bind ViewModel.Transfer.ProgressPercent, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind res:Strings.Transferring}" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind ViewModel.Transfer.CurrentFileText, Mode=OneWay}"
+                            TextTrimming="CharacterEllipsis" />
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind ViewModel.Transfer.SpeedText, Mode=OneWay}" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind ViewModel.Transfer.RemainingText, Mode=OneWay}"
+                                AutomationProperties.LiveSetting="Polite" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <VariableSizedWrapGrid ItemWidth="170" Orientation="Horizontal">
+                        <StackPanel Margin="0,0,0,4">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.TransferredText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.TransferredLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,4">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.SkippedText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.SkippedLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,4">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.FailedText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.FailedLabel}" />
+                        </StackPanel>
+                    </VariableSizedWrapGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- Transfer summary -->
+            <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.Transfer.IsFinished, Mode=OneWay}">
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                        Text="{x:Bind ViewModel.Transfer.SummaryTitle, Mode=OneWay}"
+                        AutomationProperties.HeadingLevel="Level2"
+                        AutomationProperties.LiveSetting="Assertive" />
+
+                    <InfoBar
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.Transfer.HasStopMessage, Mode=OneWay}"
+                        Message="{x:Bind ViewModel.Transfer.StopMessage, Mode=OneWay}"
+                        Severity="Warning">
+                        <Expander
+                            Margin="0,0,0,12"
+                            HorizontalAlignment="Stretch"
+                            Header="{x:Bind res:Strings.ShowDetails}"
+                            Visibility="{x:Bind IsNotEmpty(ViewModel.Transfer.ErrorDetails), Mode=OneWay}">
+                            <TextBlock
+                                FontFamily="Consolas"
+                                IsTextSelectionEnabled="True"
+                                Text="{x:Bind ViewModel.Transfer.ErrorDetails, Mode=OneWay}"
+                                TextWrapping="Wrap" />
+                        </Expander>
+                    </InfoBar>
+
+                    <VariableSizedWrapGrid ItemWidth="170" Orientation="Horizontal">
+                        <StackPanel Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon FontSize="16" Glyph="&#xE73E;" AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.TransferredText, Mode=OneWay}" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.TransferredLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.SkippedText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.SkippedLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.FailedText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.FailedLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.BytesText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.CopiedLabel}" />
+                        </StackPanel>
+                    </VariableSizedWrapGrid>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.DestinationLabel}" />
+                        <TextBlock IsTextSelectionEnabled="True" Text="{x:Bind ViewModel.Transfer.DestinationText, Mode=OneWay}" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind ViewModel.Transfer.RemainingItemsText, Mode=OneWay}"
+                        TextWrapping="WrapWholeWords"
+                        Visibility="{x:Bind ViewModel.Transfer.HasRemaining, Mode=OneWay}" />
+
+                    <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.Transfer.HasFailures, Mode=OneWay}">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.Transfer.FailuresText, Mode=OneWay}" />
+                        <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Header="{x:Bind res:Strings.ViewFailedFiles}">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Transfer.FailedFiles, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:FailedFileRow">
+                                        <StackPanel Margin="0,0,0,8">
+                                            <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind FileName}" />
+                                            <TextBlock
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Text="{x:Bind Reason}"
+                                                TextWrapping="WrapWholeWords" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            Command="{x:Bind ViewModel.Transfer.DoneCommand}"
+                            Content="{x:Bind res:Strings.Done}"
+                            Style="{StaticResource AccentButtonStyle}" />
+                        <Button Command="{x:Bind ViewModel.Transfer.OpenFolderCommand}" Content="{x:Bind res:Strings.OpenFolder}" />
+                        <Button
+                            Command="{x:Bind ViewModel.Transfer.RetryCommand}"
+                            Content="{x:Bind ViewModel.Transfer.RetryText, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.Transfer.CanRetryItems, Mode=OneWay}" />
                     </StackPanel>
                 </StackPanel>
             </Border>

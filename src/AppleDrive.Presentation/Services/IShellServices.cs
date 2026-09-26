@@ -8,4 +8,15 @@ public interface IShellServices
 
     /// <summary>Opens a folder in File Explorer.</summary>
     Task OpenFolderAsync(string path);
+
+    /// <summary>Asks the user to confirm an action. Returns true only for the primary button.</summary>
+    Task<bool> ConfirmAsync(ConfirmationRequest request);
 }
+
+/// <summary>A confirmation dialog: a title, labelled values, an optional note, and two buttons.</summary>
+public sealed record ConfirmationRequest(
+    string Title,
+    IReadOnlyList<KeyValuePair<string, string>> Details,
+    string? Footnote,
+    string PrimaryButton,
+    string CloseButton);

@@ -5,6 +5,7 @@ using AppleDrive.Infrastructure.Database;
 using AppleDrive.Infrastructure.FileSystem;
 using AppleDrive.Infrastructure.Hashing;
 using AppleDrive.Infrastructure.Iphone;
+using AppleDrive.Infrastructure.Metadata;
 using AppleDrive.Infrastructure.Settings;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,9 +31,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<DestinationIndexService>();
 
         services.AddSingleton<IHashService, Sha256HashService>();
+        services.AddSingleton<DestinationContentLookup>();
         services.AddSingleton<ExactDuplicateDetector>();
         services.AddSingleton<ImportAnalysisService>();
         services.AddSingleton<ImportSession>();
+
+        services.AddSingleton<ITransferRepository, TransferRepository>();
+        services.AddSingleton<ICaptureDateReader, CaptureDateReader>();
+        services.AddSingleton<DestinationNameReservations>();
+        services.AddSingleton<MediaTransferService>();
         return services;
     }
 }

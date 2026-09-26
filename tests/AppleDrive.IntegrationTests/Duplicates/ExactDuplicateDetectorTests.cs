@@ -28,7 +28,8 @@ public sealed class ExactDuplicateDetectorTests : IAsyncLifetime
             _db.Repository,
             TimeProvider.System,
             NullLogger<DestinationIndexService>.Instance);
-        _detector = new ExactDuplicateDetector(_phone, _db.Repository, new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
+        var lookup = new DestinationContentLookup(_db.Repository, new Sha256HashService(), NullLogger<DestinationContentLookup>.Instance);
+        _detector = new ExactDuplicateDetector(_phone, lookup, new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
         await _phone.ConnectAsync(FakePhoneDeviceService.TestPhone, CancellationToken.None);
     }
 

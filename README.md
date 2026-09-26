@@ -4,7 +4,7 @@ Apple Drive is a Windows desktop app that copies photos and videos from an iPhon
 
 Apple Drive never deletes or changes anything on your iPhone, never overwrites files on your PC, and never sends your photos anywhere. Everything runs locally and offline.
 
-> **Status:** early development. Detecting an iPhone, reading its media, and showing a scan summary works on real hardware. Destination scanning, indexing and exact duplicate detection work too. Transfers are in progress. See [Roadmap](#roadmap).
+> **Status:** early development. Detecting an iPhone, reading its media, destination indexing, exact duplicate detection and verified transfers work. Visually-similar duplicate detection, thumbnails and crash recovery are next. See [Roadmap](#roadmap).
 
 ---
 
@@ -25,6 +25,7 @@ Apple Drive never deletes or changes anything on your iPhone, never overwrites f
 | CommunityToolkit.Mvvm | MVVM source generators (observable properties, commands) |
 | Microsoft.Extensions.DependencyInjection / Logging | Dependency injection and logging abstractions |
 | Serilog, Serilog.Extensions.Logging, Serilog.Sinks.File | Rolling diagnostic log files |
+| Microsoft.Data.Sqlite, Dapper | Local media index and transfer history |
 | xunit.v3, Microsoft.NET.Test.Sdk, xunit.runner.visualstudio | Tests |
 
 Versions are managed centrally in `Directory.Packages.props`.
@@ -46,11 +47,19 @@ For ARM64, add `-p:Platform=ARM64`.
 
 ### Device probe (diagnostics)
 
-`tools/AppleDrive.DeviceProbe` is a console tool that checks the whole iPhone path without the UI. It lists devices, connects, enumerates media, and reads a few files into memory to verify size, content type, and throughput. It writes nothing to disk and changes nothing on the phone.
+`tools/AppleDrive.DeviceProbe` is a console tool that checks the whole iPhone path without the UI. It lists devices, connects, enumerates media, and reads a few files into memory to verify size, content type, and throughput. By default it writes nothing to disk, and it never changes anything on the phone.
 
 ```powershell
 dotnet run --project tools/AppleDrive.DeviceProbe -- --read 10
 ```
+
+More checks:
+
+| Option | What it does |
+|---|---|
+| `--copy-to <folder>` | Also saves the files it reads (never overwriting), for making test fixtures. |
+| `--reconnect-check <n>` | Reads *n* files, reconnects, and reads them again by the same object id, confirming the content is identical. The transfer engine relies on this when it re-reads a suspicious file. |
+| `--transfer <folder> [--organize flat\|month\|day] [--limit <items>]` | Runs the real duplicate check and transfer engine into `<folder>`, with a throwaway index database (the app's own index is untouched), then reports what was copied, the speed, and any leftovers. |
 
 ---
 
@@ -96,7 +105,7 @@ Alternatives considered and rejected:
 src/
   AppleDrive.Domain          Entities, enums, value types and pure domain logic (no dependencies)
   AppleDrive.Application     Use-case services and the interfaces infrastructure must implement
-  AppleDrive.Infrastructure  WPD iPhone access, file system, settings (later: SQLite, hashing, imaging)
+  AppleDrive.Infrastructure  WPD iPhone access, SQLite, file system, hashing, media metadata, settings
   AppleDrive.Presentation    ViewModels and localizable strings (no WinUI dependency, unit-testable)
   AppleDrive.App             WinUI 3 views, window, composition root (DI, logging)
 tools/
@@ -115,6 +124,11 @@ Key abstractions:
 |---|---|---|
 | `IPhoneDeviceService` | `WpdPhoneDeviceService` | Lists attached iPhones; `DeviceWatcher` on the WPD interface class for plug/unplug |
 | `IPhonePhotoSource` | `WpdPhotoSource` | Connect, enumerate media, open read-only streams |
+| `IDestinationScanner` | `DestinationScanner` | Lists media files in the destination folder |
+| `IMediaRepository` | `MediaRepository` | Index of destination files (SQLite) |
+| `ITransferRepository` | `TransferRepository` | Transfer history (SQLite) |
+| `IHashService` | `Sha256HashService` | Streaming SHA-256 |
+| `ICaptureDateReader` | `CaptureDateReader` | Capture date from EXIF (JPEG, HEIC) and QuickTime (MOV, MP4) metadata |
 | `ISettingsService` | `JsonSettingsService` | Persisted user preferences |
 | `IAppPaths` | `AppPaths` | Per-user data locations |
 
@@ -164,6 +178,13 @@ Indexes, each backed by a query-plan test:
 
 There is deliberately no index on media type, capture date, or perceptual hash. Those aren't queried against the destination table: perceptual matching is a Hamming-distance search done in memory.
 
+Transfer history (schema 2):
+
+- `TransferSessions`: one row per run. Device name, destination, start and end times, status (running, completed, cancelled, stopped) and totals.
+- `Transfers`: one row per file. Source object and persistent ids, name, reported and delivered size, the temporary `.partial` path, final destination path, SHA-256, status (in progress, completed, failed, cancelled, duplicate), and the error kind and message for failures.
+
+The `.partial` path is recorded *before* the file is created, so a transfer interrupted by a crash can always be found and cleaned up. `IX_Transfers_SessionId_Status` serves a run's summary and failure list; the partial index `IX_Transfers_InProgress` finds unfinished transfers at startup.
+
 **Migrations:** the schema version is stored in `PRAGMA user_version`. Migrations in `Infrastructure/Database/Migrations/Migrations.cs` are forward-only, each runs in its own transaction, and an existing database is backed up to `media-index.db.v<N>.bak` before an upgrade. A database created by a newer app version is refused and left untouched. To change the schema, append a new migration; never edit a released one.
 
 ## Duplicate detection
@@ -175,7 +196,7 @@ There is deliberately no index on media type, capture date, or perceptual hash. 
 3. **Safety rules:**
    - A destination file that changed after it was indexed is not trusted as a match.
    - A phone file that can't be read to compare is treated as **new**, and the summary says how many.
-   - If the phone reports a wrong size (on-the-fly HEIC→JPEG conversion), the file is treated as **new**, never as a duplicate. The transfer engine re-checks by hash after copying.
+   - If the phone reports a wrong size (on-the-fly HEIC→JPEG conversion), the file is treated as **new**, never as a duplicate. The transfer engine re-checks by hash after copying (see [Transfer safety](#transfer-safety)).
    - If the phone disconnects mid-check, the check stops with an error.
 4. **Live Photos** count as already imported only when *both* the image and the video exist. If only one does, the item is new and only the missing part is copied.
 5. **Moved files:** when a hash matches a record that is no longer found at its old path, the stale record is removed.
@@ -183,14 +204,50 @@ There is deliberately no index on media type, capture date, or perceptual hash. 
 
 Tested on a real iPhone (441 items, 477 files) against a folder of 12 files copied from it, one renamed and one with a single byte changed. The check read only the 12 phone files that shared a size with a destination file and finished in under a second. The renamed copy was matched and the altered file was classified as new.
 
+## Transferring
+
+After **Check for new photos**, **Start transfer** shows a confirmation with the number of new items, the duplicates that will be skipped, the total size, the destination and the folder layout. Nothing starts until you confirm. While it runs, the page shows items done, the current file, bytes copied, speed, and the time remaining (only once the speed has settled). It also shows running counts of files transferred, skipped and failed. **Cancel** is always available.
+
+The summary shows what was transferred, skipped and failed, and how much was copied. From it you can **Open folder**, view the failed files with the reason for each, and **Retry failed**, which copies only what is still missing. If the transfer was cancelled or stopped early, the same button reads **Copy remaining**.
+
+### Folder layout and names
+
+- **Organize imported files** (Settings): no subfolders, `2026\09 September`, or `2026\09 September\25`. Month folders are always named in English, so the layout doesn't change with the Windows display language.
+- The date is **when the photo or video was taken**, read from the copied file: EXIF `DateTimeOriginal` for JPEG and HEIC, and the Apple creation date (else the movie header time) for MOV and MP4. The folder uses the local time *where it was taken*, so a photo taken at 23:30 on 31 March goes in March even when that was already April in UTC. When a file has no date (screenshots often don't), the date the phone reports is used. Failing that, the month of its camera-roll folder on the phone is used (`202504__` is April 2025); with day folders, such a file goes in the month folder rather than an invented day. Only when none of these exists is the transfer date used.
+- Copied files get their capture date as their *modified* date, so they sort correctly in File Explorer.
+- **Live Photos** keep both parts together with the same name, in the folder of the image's date. If the image is already in the destination and only the video is missing, the video is placed next to the existing image with the same name.
+- **Name clashes** never overwrite: `IMG_1234.HEIC` becomes `IMG_1234 (1).HEIC`, then `(2)`, and so on. Both parts of a Live Photo get the same number. Names are reserved in memory while a transfer is running, so two files can never be given the same name.
+
 ## Transfer safety
 
-*(In progress.)* Guarantees the transfer engine is built around:
+1. **Nothing on the iPhone is ever modified or deleted.** The device layer declares only read operations.
+2. **Copy to a temporary file.** Each file is streamed from the phone into `<name>.<id>.partial` in the destination folder, and hashed with SHA-256 as it is copied. The disk write of one chunk overlaps the device read of the next. The temporary file is flushed to the disk itself (`FlushFileBuffers`) before it is closed.
+3. **Verify.** The temporary file must exist and have exactly the number of bytes read, and it is read back and hashed again. The hash must match the one computed while copying. When the duplicate check already hashed the file, that hash must match too.
+4. **Check what the phone delivered.** A delivered size different from the size the phone reports, or content different from the duplicate check, is suspicious. Testing showed that after certain errors the driver could deliver one file's bytes under another file's name. The file is read again after reconnecting to the phone, and it is accepted only if the second read is consistent:
+   - it matches the reported size, or
+   - it is identical to the first read and is a genuine on-the-fly HEIC→JPEG conversion (JPEG content from a `.HEIC` file), in which case it is saved as `.JPG`.
+5. **Re-check for duplicates.** If the delivered content turns out to already be in the destination (possible when the reported size was wrong), the copy is discarded and counted as skipped.
+6. **Rename into place**, never overwriting. Only then is the file added to the index (with its SHA-256) and recorded as transferred. A file that is not verified is never reported as imported.
+7. **One file at a time from the phone.** Only one device stream is ever open. Verifying and naming a copied file happens while the next file is being read, with at most two copied files waiting.
 
-- Nothing on the iPhone is ever modified or deleted. The device layer can't do it.
-- Files are copied to a temporary `*.partial` file, flushed, verified (size + SHA-256), and only then renamed into place.
-- Existing destination files are never overwritten. Name clashes get ` (1)`, ` (2)`, … suffixes.
-- Reads from the iPhone are strictly one at a time. Testing showed that a device stream left open causes the driver to report *busy*, and after such failures it could deliver one file's bytes under another file's name. The device layer releases every stream deterministically, and the delivered byte count is always checked against the size the phone reports.
+**Failures:**
+
+| Situation | What happens |
+|---|---|
+| A read error (device busy or I/O error) | The file is read again once, after reconnecting. If it still fails, it is marked failed and the transfer continues. |
+| iPhone unplugged, locked or untrusted | The transfer stops. Files already copied and verified are kept; the rest are listed as not copied. |
+| Destination drive unplugged, full, read-only or not permitted | The transfer stops; nothing more is attempted. |
+| Verification fails | The copy is discarded and the file is marked failed. |
+| **Cancel** | The file being copied is abandoned. Nothing unverified is kept, and every history record is closed. |
+| App closed during a transfer | The transfer is cancelled and cleaned up the same way (up to 10 seconds). |
+
+In every case the only files deleted are the transfer's own `.partial` files. A write failure that affects only one file fails just that file.
+
+**Resuming:** everything already transferred is in the index with its hash, so **Check for new photos** after an interruption shows only what is still missing. Nothing is copied twice.
+
+**Tested on a real iPhone** (441 items, 477 files, 4.3 GB) through the app: the transfer was cancelled after 60 items (no `.partial` file left), then **Copy remaining** finished the other 381 in about two minutes (roughly 30 MB/s), with 0 failures. Two photos that exist twice on the phone were copied once. Reading all 477 files from the phone again and comparing them by SHA-256 found every one identical in the destination. Month folders matched Windows' own *Date taken* / *Media created* for every file that has one, and object ids were confirmed to survive a reconnect.
+
+Tested against a simulated iPhone for: successful copies, read failures and retries, a disconnected phone, a missing or read-only destination, cancellation, verification (hash) mismatch, wrong content and wrong sizes from the phone, HEIC→JPEG conversion, name conflicts (`IMG.jpg` → `IMG (1).jpg` → `IMG (2).jpg`), Live Photo pairing and retries, folder organization by capture date, and progress reporting.
 
 ---
 
@@ -202,6 +259,9 @@ Tested on a real iPhone (441 items, 477 files) against a folder of 12 files copi
 | "Unlock your iPhone" doesn't go away | Unlock the phone and tap **Trust**. If you tapped *Don't Trust* before, reset it on the iPhone: Settings → General → Transfer or Reset iPhone → Reset → **Reset Location & Privacy**, then reconnect. |
 | "Can't open your iPhone" | Unplug and reconnect. Close other apps that may be importing from the phone (Photos, File Explorer windows on the phone). Install the **Apple Devices** app from the Microsoft Store to update the driver. |
 | Fewer photos than on the phone | Items stored only in iCloud aren't available over USB (see *Known limitations*). |
+| "The copy didn't match what your iPhone sent" | Retry. If it keeps happening, unplug and reconnect the iPhone. On the iPhone, set Settings → Apps → Photos → Transfer to Mac or PC → **Keep Originals**. |
+| "The destination drive is full" | Free up space or choose another folder, then use **Copy remaining**. Everything copied so far is kept. |
+| `*.partial` files in the destination | Left behind only if the app was killed mid-transfer. They are incomplete copies and are safe to delete. |
 | Anything else | Settings → **Open logs folder**, and include the latest log when reporting the problem. |
 
 ---
@@ -213,8 +273,8 @@ Tested on a real iPhone (441 items, 477 files) against a folder of 12 files copi
 3. ✅ Destination folder scanner
 4. ✅ SQLite media index with migrations
 5. ✅ SHA-256 exact duplicate detection
-6. Transfer engine
-7. Transfer verification and crash recovery
+6. ✅ Transfer engine: verified copies, folder organization by capture date, conflict-free names, progress, cancel, retry
+7. Crash recovery (cleaning up after an app killed mid-transfer) and faster resume
 8. Perceptual hashing
 9. Thumbnails and media review UI
 10. History, filtering, accessibility polish, MSIX packaging

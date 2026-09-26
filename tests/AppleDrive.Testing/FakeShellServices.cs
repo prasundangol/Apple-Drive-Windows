@@ -16,4 +16,15 @@ public sealed class FakeShellServices : IShellServices
         OpenedFolders.Add(path);
         return Task.CompletedTask;
     }
+
+    /// <summary>Answer given to confirmation dialogs.</summary>
+    public bool ConfirmResult { get; set; } = true;
+
+    public List<ConfirmationRequest> Confirmations { get; } = [];
+
+    public Task<bool> ConfirmAsync(ConfirmationRequest request)
+    {
+        Confirmations.Add(request);
+        return Task.FromResult(ConfirmResult);
+    }
 }

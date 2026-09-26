@@ -13,6 +13,7 @@ namespace AppleDrive.Testing;
 public sealed class FakeIPhonePhotoSource : IPhonePhotoSource
 {
     private readonly Dictionary<string, FakeFile> _files = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, byte[]> _nextDelivery = new(StringComparer.Ordinal);
     private int _openStreams;
 
     public DeviceConnectionStatus ConnectStatus { get; set; } = DeviceConnectionStatus.Connected;
@@ -56,6 +57,19 @@ public sealed class FakeIPhonePhotoSource : IPhonePhotoSource
     /// <summary>Makes reads of <paramref name="asset"/> fail after <paramref name="afterBytes"/> bytes.</summary>
     public void FailReadsOf(PhotoAsset asset, long afterBytes, ErrorKind kind = ErrorKind.DeviceDisconnected) =>
         _files[asset.Id] = _files[asset.Id] with { FailAfterBytes = afterBytes, FailureKind = kind };
+
+    /// <summary>Removes an injected read failure, as if the problem went away.</summary>
+    public void HealReadsOf(PhotoAsset asset) =>
+        _files[asset.Id] = _files[asset.Id] with { FailAfterBytes = null };
+
+    /// <summary>
+    /// The next read of <paramref name="asset"/> delivers <paramref name="content"/> instead of its own
+    /// bytes, once, like the real device handing over a previous file's data after an error.
+    /// </summary>
+    public void DeliverOnce(PhotoAsset asset, byte[] content) => _nextDelivery[asset.Id] = content;
+
+    /// <summary>Called whenever a file is opened for reading, before the stream is returned.</summary>
+    public Action<PhotoAsset>? OnOpen { get; set; }
 
     public Task<DeviceConnectionResult> ConnectAsync(DeviceInfo device, CancellationToken cancellationToken)
     {
@@ -115,6 +129,12 @@ public sealed class FakeIPhonePhotoSource : IPhonePhotoSource
         }
 
         OpenCount++;
+        OnOpen?.Invoke(asset);
+        if (_nextDelivery.Remove(asset.Id, out var substitute))
+        {
+            file = file with { Content = substitute };
+        }
+
         var open = Interlocked.Increment(ref _openStreams);
         MaxConcurrentStreams = Math.Max(MaxConcurrentStreams, open);
         Stream stream = new FakeDeviceStream(file, () => Interlocked.Decrement(ref _openStreams));

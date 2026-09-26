@@ -101,4 +101,38 @@
   <data name="NothingNewTitle" xml:space="preserve"><value>No new photos to transfer</value></data>
   <data name="NothingNewBody" xml:space="preserve"><value>Everything available on the iPhone already exists in the selected destination.</value></data>
   <data name="CheckAgain" xml:space="preserve"><value>Check again</value></data>
+  <data name="StartTransfer" xml:space="preserve"><value>Start transfer</value></data>
+  <data name="ConfirmTransferTitle" xml:space="preserve"><value>Ready to transfer</value></data>
+  <data name="ConfirmNewLabel" xml:space="preserve"><value>New photos and videos</value></data>
+  <data name="ConfirmDuplicatesLabel" xml:space="preserve"><value>Already in destination (skipped)</value></data>
+  <data name="ConfirmSizeLabel" xml:space="preserve"><value>Total transfer size</value></data>
+  <data name="ConfirmOrganizationLabel" xml:space="preserve"><value>Organized by</value></data>
+  <data name="ConfirmFootnote" xml:space="preserve"><value>Nothing on your iPhone is changed or deleted, and no existing file is overwritten.</value></data>
+  <data name="Transferring" xml:space="preserve"><value>Transferring…</value></data>
+  <data name="TransferItemsFormat" xml:space="preserve"><value>{0:N0} of {1:N0}</value></data>
+  <data name="TransferCurrentFormat" xml:space="preserve"><value>Current: {0}</value></data>
+  <data name="TransferSpeedFormat" xml:space="preserve"><value>{0}/s</value></data>
+  <data name="TransferRemainingFormat" xml:space="preserve"><value>About {0} remaining</value></data>
+  <data name="TransferStarting" xml:space="preserve"><value>Starting…</value></data>
+  <data name="TransferredLabel" xml:space="preserve"><value>Transferred</value></data>
+  <data name="SkippedLabel" xml:space="preserve"><value>Skipped</value></data>
+  <data name="FailedLabel" xml:space="preserve"><value>Failed</value></data>
+  <data name="CopiedLabel" xml:space="preserve"><value>Copied</value></data>
+  <data name="TransferCompleteTitle" xml:space="preserve"><value>Transfer complete</value></data>
+  <data name="TransferCancelledTitle" xml:space="preserve"><value>Transfer cancelled</value></data>
+  <data name="TransferStoppedTitle" xml:space="preserve"><value>Transfer stopped</value></data>
+  <data name="TransferRemainingItemsFormat" xml:space="preserve"><value>{0:N0} items weren't copied yet. Nothing half-copied was left in the destination.</value></data>
+  <data name="TransferFailedFormat" xml:space="preserve"><value>{0:N0} items couldn't be copied.</value></data>
+  <data name="ViewFailedFiles" xml:space="preserve"><value>View failed files</value></data>
+  <data name="RetryFailed" xml:space="preserve"><value>Retry failed</value></data>
+  <data name="CopyRemaining" xml:space="preserve"><value>Copy remaining</value></data>
+  <data name="OpenFolder" xml:space="preserve"><value>Open folder</value></data>
+  <data name="Done" xml:space="preserve"><value>Done</value></data>
+  <data name="ErrorDestinationFull" xml:space="preserve"><value>The destination drive is full. Free up space or choose another folder, then try again.</value></data>
+  <data name="ErrorVerificationFailed" xml:space="preserve"><value>The copy didn&apos;t match what your iPhone sent, so it wasn&apos;t kept. Try again; if it keeps failing, unplug your iPhone and plug it back in.</value></data>
+  <data name="ErrorDestinationIo" xml:space="preserve"><value>The file couldn&apos;t be written to the destination folder.</value></data>
+  <data name="ErrorSourceUnavailable" xml:space="preserve"><value>This file is no longer available on your iPhone.</value></data>
+  <data name="DurationHoursFormat" xml:space="preserve"><value>{0}h {1}m</value></data>
+  <data name="DurationMinutesFormat" xml:space="preserve"><value>{0}m {1}s</value></data>
+  <data name="DurationSecondsFormat" xml:space="preserve"><value>{0}s</value></data>
 </root>

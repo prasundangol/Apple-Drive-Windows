@@ -4,6 +4,11 @@
 // Nothing on the phone is ever changed.
 //
 // Usage: AppleDrive.DeviceProbe [--read <count>] [--copy-to <folder>]
+//                               [--reconnect-check <count>]
+//                               [--transfer <folder> [--organize flat|month|day] [--limit <items>]]
+//
+// --transfer runs the real analysis and transfer engine into <folder>, with a temporary index
+// database (the app's own index is never touched).
 
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -15,6 +20,10 @@ using AppleDrive.Tools.DeviceProbe;
 
 var readCount = 3;
 string? copyTo = null;
+string? transferTo = null;
+var organization = FolderOrganization.YearMonth;
+var limit = 40;
+var reconnectCount = 0;
 for (var index = 0; index < args.Length - 1; index++)
 {
     if (args[index] == "--read" && int.TryParse(args[index + 1], out var parsed))
@@ -25,6 +34,26 @@ for (var index = 0; index < args.Length - 1; index++)
     if (args[index] == "--copy-to")
     {
         copyTo = Directory.CreateDirectory(args[index + 1]).FullName;
+    }
+
+    if (args[index] == "--transfer")
+    {
+        transferTo = Directory.CreateDirectory(args[index + 1]).FullName;
+    }
+
+    if (args[index] == "--organize")
+    {
+        organization = args[index + 1] switch { "flat" => FolderOrganization.Flat, "day" => FolderOrganization.YearMonthDay, _ => FolderOrganization.YearMonth };
+    }
+
+    if (args[index] == "--limit" && int.TryParse(args[index + 1], out var itemLimit))
+    {
+        limit = Math.Max(1, itemLimit);
+    }
+
+    if (args[index] == "--reconnect-check" && int.TryParse(args[index + 1], out var reconnect))
+    {
+        reconnectCount = Math.Max(1, reconnect);
     }
 }
 
@@ -175,6 +204,20 @@ if (readCount > 0)
     }
 
     Console.WriteLine($"Size mismatches: {mismatches} of {toRead.Count}");
+}
+
+if (reconnectCount > 0)
+{
+    var check = await PipelineChecks.ReconnectCheckAsync(source, iphone, assets, reconnectCount);
+    if (check != 0)
+    {
+        return check;
+    }
+}
+
+if (transferTo is not null)
+{
+    return await PipelineChecks.TransferAsync(source, transferTo, organization, limit, args.Contains("--verbose"));
 }
 
 Console.WriteLine();

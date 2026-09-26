@@ -17,4 +17,7 @@ public sealed partial class ImportPage : Microsoft.UI.Xaml.Controls.Page
     /// <summary>x:Bind helper: shows an element only when it has text to display.</summary>
     public Visibility IsNotEmpty(string? value) =>
         string.IsNullOrEmpty(value) ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>x:Bind helper: inverse of a boolean visibility.</summary>
+    public Visibility IsFalse(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
 }

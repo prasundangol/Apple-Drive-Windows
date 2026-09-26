@@ -17,4 +17,7 @@ public enum ErrorKind
     AccessDenied,
     VerificationFailed,
     Database,
+
+    /// <summary>Writing one file to the destination failed while the destination itself is still usable.</summary>
+    DestinationIo,
 }

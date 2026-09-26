@@ -38,6 +38,45 @@ internal static class Migrations
             -- Confirming a duplicate or detecting a moved file by content.
             CREATE INDEX IX_MediaFiles_Sha256 ON MediaFiles (Sha256) WHERE Sha256 IS NOT NULL;
             """),
+
+        new(2, "Transfer history", """
+            CREATE TABLE TransferSessions (
+                Id                TEXT    PRIMARY KEY,
+                DeviceName        TEXT    NULL,
+                DestinationRoot   TEXT    NOT NULL,
+                StartedAt         INTEGER NOT NULL,  -- Unix ms, UTC
+                CompletedAt       INTEGER NULL,
+                Status            INTEGER NOT NULL,  -- TransferSessionStatus
+                TransferredCount  INTEGER NOT NULL DEFAULT 0,
+                SkippedCount      INTEGER NOT NULL DEFAULT 0,
+                FailedCount       INTEGER NOT NULL DEFAULT 0,
+                TransferredBytes  INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE Transfers (
+                Id                  INTEGER PRIMARY KEY,
+                SessionId           TEXT    NOT NULL REFERENCES TransferSessions (Id),
+                SourceAssetId       TEXT    NOT NULL,
+                SourcePersistentId  TEXT    NULL,
+                SourceFileName      TEXT    NOT NULL,
+                ReportedSize        INTEGER NULL,
+                PartialPath         TEXT    NULL,      -- temporary file, recorded before it is created
+                DestinationPath     TEXT    NULL COLLATE NOCASE,
+                Sha256              BLOB    NULL,
+                FileSize            INTEGER NULL,      -- bytes actually delivered
+                StartedAt           INTEGER NOT NULL,
+                CompletedAt         INTEGER NULL,
+                Status              INTEGER NOT NULL,  -- TransferStatus
+                ErrorKind           TEXT    NULL,
+                ErrorMessage        TEXT    NULL
+            );
+
+            -- A session's files, optionally by outcome (summary, "view failed").
+            CREATE INDEX IX_Transfers_SessionId_Status ON Transfers (SessionId, Status);
+
+            -- Crash recovery: transfers that never finished.
+            CREATE INDEX IX_Transfers_InProgress ON Transfers (Id) WHERE Status = 0;
+            """),
     ];
 
     public static int LatestVersion => All[^1].Version;

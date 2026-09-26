@@ -209,6 +209,74 @@ public static class Strings
 
     public static string CheckAgain => Get();
 
+    public static string StartTransfer => Get();
+
+    public static string ConfirmTransferTitle => Get();
+
+    public static string ConfirmNewLabel => Get();
+
+    public static string ConfirmDuplicatesLabel => Get();
+
+    public static string ConfirmSizeLabel => Get();
+
+    public static string ConfirmOrganizationLabel => Get();
+
+    public static string ConfirmFootnote => Get();
+
+    public static string Transferring => Get();
+
+    public static string TransferItemsFormat => Get();
+
+    public static string TransferCurrentFormat => Get();
+
+    public static string TransferSpeedFormat => Get();
+
+    public static string TransferRemainingFormat => Get();
+
+    public static string TransferStarting => Get();
+
+    public static string TransferredLabel => Get();
+
+    public static string SkippedLabel => Get();
+
+    public static string FailedLabel => Get();
+
+    public static string CopiedLabel => Get();
+
+    public static string TransferCompleteTitle => Get();
+
+    public static string TransferCancelledTitle => Get();
+
+    public static string TransferStoppedTitle => Get();
+
+    public static string TransferRemainingItemsFormat => Get();
+
+    public static string TransferFailedFormat => Get();
+
+    public static string ViewFailedFiles => Get();
+
+    public static string RetryFailed => Get();
+
+    public static string CopyRemaining => Get();
+
+    public static string OpenFolder => Get();
+
+    public static string Done => Get();
+
+    public static string ErrorDestinationFull => Get();
+
+    public static string ErrorVerificationFailed => Get();
+
+    public static string ErrorDestinationIo => Get();
+
+    public static string ErrorSourceUnavailable => Get();
+
+    public static string DurationHoursFormat => Get();
+
+    public static string DurationMinutesFormat => Get();
+
+    public static string DurationSecondsFormat => Get();
+
     /// <summary>Formats a resource string with the current culture.</summary>
     public static string Format(string format, params object?[] arguments) =>
         string.Format(CultureInfo.CurrentCulture, format, arguments);

@@ -63,6 +63,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         services.AddSingleton<DeviceStatusViewModel>();
         services.AddSingleton<PhoneScanViewModel>();
         services.AddSingleton<DestinationViewModel>();
+        services.AddSingleton<TransferViewModel>();
         services.AddSingleton<ImportViewModel>();
         services.AddSingleton<DashboardViewModel>();
         services.AddTransient<SettingsViewModel>();
@@ -92,6 +93,9 @@ public partial class App : Microsoft.UI.Xaml.Application
         Log.Information("Apple Drive shutting down");
         try
         {
+            // A running transfer removes its temporary files when cancelled; give it a moment.
+            _services?.GetService<TransferViewModel>()?.StopForShutdown(TimeSpan.FromSeconds(10));
+
             // Closes the device connection and stops the device watcher.
             _services?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }

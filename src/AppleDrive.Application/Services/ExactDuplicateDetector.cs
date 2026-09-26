@@ -20,7 +20,7 @@ public sealed record DuplicateCheckProgress(int ItemsChecked, int TotalItems, in
 /// </remarks>
 public sealed class ExactDuplicateDetector(
     IPhonePhotoSource source,
-    IMediaRepository repository,
+    DestinationContentLookup destination,
     IHashService hashService,
     ILogger<ExactDuplicateDetector> logger)
 {
@@ -81,7 +81,7 @@ public sealed class ExactDuplicateDetector(
         CancellationToken cancellationToken)
     {
         if (asset.ReportedSize is { } reportedSize
-            && (await GetCandidatesAsync(reportedSize, root, cancellationToken).ConfigureAwait(false)).Count == 0)
+            && (await destination.GetSameSizeAsync(reportedSize, root, cancellationToken).ConfigureAwait(false)).Count == 0)
         {
             // No destination file has this size, so none can be identical.
             return new ComponentClassification(asset, AssetStatus.New);
@@ -111,25 +111,15 @@ public sealed class ExactDuplicateDetector(
                 asset.FileName, asset.ReportedSize, hash.Length);
         }
 
-        foreach (var candidate in await GetCandidatesAsync(hash.Length, root, cancellationToken).ConfigureAwait(false))
+        var identical = await destination.FindIdenticalAsync(hash, root, cancellationToken).ConfigureAwait(false);
+        if (identical is not null)
         {
-            var candidateHash = await GetDestinationHashAsync(candidate, cancellationToken).ConfigureAwait(false);
-            if (hash.Matches(candidateHash))
-            {
-                logger.LogDebug("{File} is identical to an existing destination file", asset.FileName);
-                return new ComponentClassification(asset, AssetStatus.ExactDuplicate, candidate.FullPath, hash.Sha256);
-            }
+            logger.LogDebug("{File} is identical to an existing destination file", asset.FileName);
+            return new ComponentClassification(asset, AssetStatus.ExactDuplicate, identical.FullPath, hash.Sha256);
         }
 
         logger.LogDebug("{File} has same-size destination files but different content", asset.FileName);
         return new ComponentClassification(asset, AssetStatus.New, Sha256: hash.Sha256);
-    }
-
-    private async Task<IReadOnlyList<IndexedMediaFile>> GetCandidatesAsync(long size, string root, CancellationToken cancellationToken)
-    {
-        var sameSize = await repository.GetAvailableBySizeAsync(size, cancellationToken).ConfigureAwait(false);
-        var prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
-        return sameSize.Where(file => file.FullPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
     private async Task<Result<HashResult>> HashPhoneFileAsync(PhotoAsset asset, RunState state, CancellationToken cancellationToken)
@@ -154,50 +144,6 @@ public sealed class ExactDuplicateDetector(
         catch (IOException exception)
         {
             return new AppError(ErrorKind.DeviceIo, exception.Message, exception.HResult);
-        }
-    }
-
-    /// <summary>
-    /// The stored hash, or a freshly computed one (then stored). Returns <c>null</c> when the file
-    /// can't be read or no longer matches its index record, in which case it can't be a match.
-    /// </summary>
-    private async Task<byte[]?> GetDestinationHashAsync(IndexedMediaFile file, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var info = new FileInfo(file.FullPath);
-            if (!info.Exists
-                || info.Length != file.FileSize
-                || new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeMilliseconds() != file.ModifiedAt.ToUnixTimeMilliseconds())
-            {
-                logger.LogDebug("Destination file changed since it was indexed; not used as a match");
-                return null;
-            }
-
-            if (file.Sha256 is { } stored)
-            {
-                return stored;
-            }
-
-            var computed = await hashService.ComputeFileAsync(file.FullPath, cancellationToken).ConfigureAwait(false);
-            if (computed.Length != file.FileSize)
-            {
-                return null;
-            }
-
-            await repository.SetSha256Async(file.Id, computed.Sha256, cancellationToken).ConfigureAwait(false);
-            var moved = await repository.DeleteUnavailableBySha256Async(computed.Sha256, cancellationToken).ConfigureAwait(false);
-            if (moved > 0)
-            {
-                logger.LogInformation("Detected {Count} moved file(s) in the destination", moved);
-            }
-
-            return computed.Sha256;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            logger.LogWarning(exception, "Could not hash a destination file");
-            return null;
         }
     }
 

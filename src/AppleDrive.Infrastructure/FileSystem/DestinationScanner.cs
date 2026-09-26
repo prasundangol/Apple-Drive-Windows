@@ -1,6 +1,7 @@
 using System.IO.Enumeration;
 using System.Runtime.CompilerServices;
 using AppleDrive.Application.Interfaces;
+using AppleDrive.Application.Services;
 using AppleDrive.Domain.Media;
 using Microsoft.Extensions.Logging;
 
@@ -12,9 +13,6 @@ namespace AppleDrive.Infrastructure.FileSystem;
 /// </summary>
 public sealed class DestinationScanner(ILogger<DestinationScanner> logger) : IDestinationScanner
 {
-    /// <summary>Suffix used by the transfer engine for files still being written.</summary>
-    public const string PartialFileSuffix = ".partial";
-
     private static readonly EnumerationOptions Options = new()
     {
         RecurseSubdirectories = true,
@@ -47,7 +45,7 @@ public sealed class DestinationScanner(ILogger<DestinationScanner> logger) : IDe
         {
             ShouldIncludePredicate = static (ref FileSystemEntry entry) =>
                 !entry.IsDirectory
-                && !entry.FileName.EndsWith(PartialFileSuffix, StringComparison.OrdinalIgnoreCase)
+                && !entry.FileName.EndsWith(MediaTransferService.PartialFileSuffix, StringComparison.OrdinalIgnoreCase)
                 && MediaFormats.IsSupported(entry.FileName.ToString()),
         };
 
