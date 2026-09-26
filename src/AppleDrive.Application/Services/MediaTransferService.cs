@@ -700,6 +700,8 @@ public sealed class MediaTransferService(
             {
                 try
                 {
+                    // Recorded first, so recovery can find the file if the app dies right after the rename.
+                    await transferRepository.SetTargetAsync(copy.TransferId, target, copy.Hash!.Sha256, copy.Hash.Length, CancellationToken.None).ConfigureAwait(false);
                     File.Move(partial, target, overwrite: false);
                     break;
                 }
@@ -725,6 +727,15 @@ public sealed class MediaTransferService(
                 run.Stop(error);
             }
 
+            return await FailAsync(copy, error).ConfigureAwait(false);
+        }
+        catch (DatabaseException exception)
+        {
+            // Without the record, a crash after the rename could not be recovered: don't rename.
+            reservations.Release(target);
+            logger.LogError(exception, "Could not record the destination of a transfer");
+            var error = new AppError(ErrorKind.Database, exception.Message);
+            run.Stop(error);
             return await FailAsync(copy, error).ConfigureAwait(false);
         }
 

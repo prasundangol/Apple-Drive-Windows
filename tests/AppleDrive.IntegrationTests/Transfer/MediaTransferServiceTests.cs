@@ -34,7 +34,7 @@ public sealed class MediaTransferServiceTests : IAsyncLifetime
         _index = new DestinationIndexService(
             new DestinationScanner(NullLogger<DestinationScanner>.Instance), _db.Repository, TimeProvider.System, NullLogger<DestinationIndexService>.Instance);
         _lookup = new DestinationContentLookup(_db.Repository, new Sha256HashService(), NullLogger<DestinationContentLookup>.Instance);
-        _detector = new ExactDuplicateDetector(_phone, _lookup, new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
+        _detector = new ExactDuplicateDetector(_phone, _lookup, _history, new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
         await _phone.ConnectAsync(FakePhoneDeviceService.TestPhone, CancellationToken.None);
     }
 
@@ -150,6 +150,60 @@ public sealed class MediaTransferServiceTests : IAsyncLifetime
 
         Assert.Equal(0, again.NewCount);
         Assert.Equal(2, again.ExactDuplicateCount);
+    }
+
+    [Fact]
+    public async Task Files_transferred_earlier_are_recognised_without_reading_the_phone()
+    {
+        _phone.AddFile("Internal Storage/a/IMG_1.HEIC", Bytes(8_000));
+        _phone.AddFile("Internal Storage/a/IMG_1.MOV", Bytes(9_000));
+        _phone.AddFile("Internal Storage/a/IMG_2.JPG", Bytes(7_000));
+        await TransferAsync(await PlanAsync(), FolderOrganization.YearMonth);
+        var readsBefore = _phone.OpenCount;
+
+        var again = await PlanAsync();
+
+        Assert.Equal(0, again.NewCount);
+        Assert.Equal(2, again.ExactDuplicateCount);
+        Assert.Equal(readsBefore, _phone.OpenCount);
+        Assert.All(again.Items.SelectMany(item => item.Components), component => Assert.True(File.Exists(component.ExistingPath)));
+    }
+
+    [Fact]
+    public async Task A_copy_changed_since_its_transfer_is_not_trusted()
+    {
+        var content = Bytes(8_000);
+        _phone.AddFile("Internal Storage/a/IMG_1.JPG", content);
+        await TransferAsync(await PlanAsync());
+        var copy = _destination.Combine("IMG_1.JPG");
+        var edited = (byte[])content.Clone();
+        edited[100] ^= 0xFF;
+        File.WriteAllBytes(copy, edited);
+        File.SetLastWriteTimeUtc(copy, DateTime.UtcNow.AddMinutes(1));
+        var readsBefore = _phone.OpenCount;
+
+        var again = await PlanAsync();
+
+        Assert.Equal(AssetStatus.New, Assert.Single(again.Items).Status);
+        Assert.Equal(readsBefore + 1, _phone.OpenCount);
+    }
+
+    [Fact]
+    public async Task A_moved_copy_is_found_by_reading_the_phone()
+    {
+        var content = Bytes(8_000);
+        _phone.AddFile("Internal Storage/a/IMG_1.JPG", content);
+        await TransferAsync(await PlanAsync());
+        Directory.CreateDirectory(_destination.Combine("Sorted"));
+        File.Move(_destination.Combine("IMG_1.JPG"), _destination.Combine("Sorted", "IMG_1.JPG"));
+        var readsBefore = _phone.OpenCount;
+
+        var again = await PlanAsync();
+
+        var item = Assert.Single(again.Items);
+        Assert.Equal(AssetStatus.ExactDuplicate, item.Status);
+        Assert.Equal(_destination.Combine("Sorted", "IMG_1.JPG"), item.ExistingPath);
+        Assert.Equal(readsBefore + 1, _phone.OpenCount);
     }
 
     // ------------------------------------------------------------------ naming

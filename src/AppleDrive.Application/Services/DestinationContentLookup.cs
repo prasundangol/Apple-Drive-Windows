@@ -36,6 +36,23 @@ public sealed class DestinationContentLookup(
     }
 
     /// <summary>
+    /// The indexed file at <paramref name="path"/>, when it is available, unchanged on disk since it
+    /// was indexed, and has exactly this content hash; otherwise <c>null</c>. Uses the stored hash,
+    /// so it reads nothing but the file's size and time.
+    /// </summary>
+    public async Task<IndexedMediaFile?> GetUnchangedAsync(string path, byte[] sha256, CancellationToken cancellationToken)
+    {
+        var record = await repository.GetByPathAsync(path, cancellationToken).ConfigureAwait(false);
+        if (record is not { IsAvailable: true, Sha256: { } stored } || !stored.AsSpan().SequenceEqual(sha256))
+        {
+            return null;
+        }
+
+        var current = await GetHashAsync(record, cancellationToken).ConfigureAwait(false);
+        return current is not null && current.AsSpan().SequenceEqual(sha256) ? record : null;
+    }
+
+    /// <summary>
     /// The stored hash, or a freshly computed one (then stored). Returns <c>null</c> when the file
     /// can't be read or no longer matches its index record, in which case it can't be a match.
     /// </summary>

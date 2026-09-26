@@ -16,4 +16,7 @@ public enum TransferStatus
 
     /// <summary>Copied, but the delivered content turned out to already exist, so the copy was discarded.</summary>
     Duplicate = 4,
+
+    /// <summary>The app stopped (crash, power loss) before this transfer finished; closed by recovery at the next start.</summary>
+    Interrupted = 5,
 }

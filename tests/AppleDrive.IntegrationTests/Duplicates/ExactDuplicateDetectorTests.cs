@@ -4,6 +4,7 @@ using AppleDrive.Domain.Entities;
 using AppleDrive.Domain.Enums;
 using AppleDrive.Domain.Media;
 using AppleDrive.Domain.Results;
+using AppleDrive.Infrastructure.Database;
 using AppleDrive.Infrastructure.FileSystem;
 using AppleDrive.Infrastructure.Hashing;
 using AppleDrive.IntegrationTests.Database;
@@ -29,7 +30,7 @@ public sealed class ExactDuplicateDetectorTests : IAsyncLifetime
             TimeProvider.System,
             NullLogger<DestinationIndexService>.Instance);
         var lookup = new DestinationContentLookup(_db.Repository, new Sha256HashService(), NullLogger<DestinationContentLookup>.Instance);
-        _detector = new ExactDuplicateDetector(_phone, lookup, new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
+        _detector = new ExactDuplicateDetector(_phone, lookup, new TransferRepository(_db.Database), new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
         await _phone.ConnectAsync(FakePhoneDeviceService.TestPhone, CancellationToken.None);
     }
 

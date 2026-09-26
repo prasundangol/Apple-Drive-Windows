@@ -19,10 +19,22 @@ public interface ITransferRepository
     /// <summary>Stores the outcome of a transfer started with <see cref="AddAsync"/>.</summary>
     Task CompleteAsync(long id, TransferOutcomeRecord outcome, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Records the final path and verified content of a transfer just before its file is renamed
+    /// into place, so a crash between the rename and <see cref="CompleteAsync"/> can be recovered.
+    /// </summary>
+    Task SetTargetAsync(long id, string destinationPath, byte[] sha256, long fileSize, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<TransferRecord>> GetBySessionAsync(string sessionId, CancellationToken cancellationToken);
 
     /// <summary>Transfers still marked <see cref="TransferStatus.InProgress"/>: the app stopped while they ran.</summary>
     Task<IReadOnlyList<TransferRecord>> GetInProgressAsync(CancellationToken cancellationToken);
+
+    /// <summary>Sessions still marked <see cref="TransferSessionStatus.Running"/>.</summary>
+    Task<IReadOnlyList<TransferSessionRecord>> GetRunningSessionsAsync(CancellationToken cancellationToken);
+
+    /// <summary>Completed transfers whose destination file is inside <paramref name="root"/>.</summary>
+    Task<IReadOnlyList<TransferRecord>> GetCompletedUnderRootAsync(string root, CancellationToken cancellationToken);
 }
 
 /// <summary>The fields set when a transfer finishes.</summary>

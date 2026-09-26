@@ -4,7 +4,7 @@ Apple Drive is a Windows desktop app that copies photos and videos from an iPhon
 
 Apple Drive never deletes or changes anything on your iPhone, never overwrites files on your PC, and never sends your photos anywhere. Everything runs locally and offline.
 
-> **Status:** early development. Detecting an iPhone, reading its media, destination indexing, exact duplicate detection and verified transfers work. Visually-similar duplicate detection, thumbnails and crash recovery are next. See [Roadmap](#roadmap).
+> **Status:** early development. Detecting an iPhone, reading its media, destination indexing, exact duplicate detection and verified transfers with crash recovery work. Visually-similar duplicate detection and thumbnails are next. See [Roadmap](#roadmap).
 
 ---
 
@@ -118,6 +118,8 @@ tests/
 
 Dependencies point inward: `App → Presentation → Application → Domain`. `Infrastructure` implements `Application` interfaces and is connected up only in the composition root (`App.xaml.cs`). ViewModels never touch the file system, Windows APIs or hashing directly.
 
+Apple Drive runs as a **single instance** (Windows App SDK `AppInstance` redirection, in `Program.cs`): launching it again brings the open window forward. Two instances would compete for the phone's single stream, and one's startup recovery could clean up the other's running transfer.
+
 Key abstractions:
 
 | Interface | Production implementation | Purpose |
@@ -183,7 +185,7 @@ Transfer history (schema 2):
 - `TransferSessions`: one row per run. Device name, destination, start and end times, status (running, completed, cancelled, stopped) and totals.
 - `Transfers`: one row per file. Source object and persistent ids, name, reported and delivered size, the temporary `.partial` path, final destination path, SHA-256, status (in progress, completed, failed, cancelled, duplicate), and the error kind and message for failures.
 
-The `.partial` path is recorded *before* the file is created, so a transfer interrupted by a crash can always be found and cleaned up. `IX_Transfers_SessionId_Status` serves a run's summary and failure list; the partial index `IX_Transfers_InProgress` finds unfinished transfers at startup.
+The `.partial` path is recorded *before* the file is created, so a transfer interrupted by a crash can always be found and cleaned up. `IX_Transfers_SessionId_Status` serves a run's summary and failure list; the partial index `IX_Transfers_InProgress` finds unfinished transfers at startup. Schema 3 adds `IX_Transfers_Completed_DestinationPath` (completed transfers into a folder, for the faster re-check) and `IX_TransferSessions_Running` (sessions left running by a crash). Just before a file is renamed into place, its final path and SHA-256 are recorded too.
 
 **Migrations:** the schema version is stored in `PRAGMA user_version`. Migrations in `Infrastructure/Database/Migrations/Migrations.cs` are forward-only, each runs in its own transaction, and an existing database is backed up to `media-index.db.v<N>.bak` before an upgrade. A database created by a newer app version is refused and left untouched. To change the schema, append a new migration; never edit a released one.
 
@@ -200,7 +202,8 @@ The `.partial` path is recorded *before* the file is created, so a transfer inte
    - If the phone disconnects mid-check, the check stops with an error.
 4. **Live Photos** count as already imported only when *both* the image and the video exist. If only one does, the item is new and only the missing part is copied.
 5. **Moved files:** when a hash matches a record that is no longer found at its old path, the stale record is removed.
-6. **Perceptual hash (images only), coming in phase 8:** visually similar images (resized, recompressed, HEIC vs JPEG) will be flagged as *possible duplicates* and always shown to you for a decision. They are never skipped silently.
+6. **Files Apple Drive already transferred** are recognised from transfer history without reading the phone again, when the phone file has the same persistent id, name and size as that transfer, and the copy is still in the index, unchanged since (same size and modification time, same SHA-256). The proof is the SHA-256 verified during that transfer. If the copy was edited, moved or deleted, the phone file is read and compared as usual.
+7. **Perceptual hash (images only), coming in phase 8:** visually similar images (resized, recompressed, HEIC vs JPEG) will be flagged as *possible duplicates* and always shown to you for a decision. They are never skipped silently.
 
 Tested on a real iPhone (441 items, 477 files) against a folder of 12 files copied from it, one renamed and one with a single byte changed. The check read only the 12 phone files that shared a size with a destination file and finished in under a second. The renamed copy was matched and the altered file was classified as new.
 
@@ -240,12 +243,15 @@ The summary shows what was transferred, skipped and failed, and how much was cop
 | Verification fails | The copy is discarded and the file is marked failed. |
 | **Cancel** | The file being copied is abandoned. Nothing unverified is kept, and every history record is closed. |
 | App closed during a transfer | The transfer is cancelled and cleaned up the same way (up to 10 seconds). |
+| App killed, crash or power loss | At the next start, before anything else, unfinished transfers are resolved: a file that had already been renamed into place is checked against its recorded SHA-256 and kept; otherwise its recorded `.partial` file (and only that, recognised by path and name pattern) is deleted. If the destination drive isn't connected, this waits until a later start. |
 
 In every case the only files deleted are the transfer's own `.partial` files. A write failure that affects only one file fails just that file.
 
-**Resuming:** everything already transferred is in the index with its hash, so **Check for new photos** after an interruption shows only what is still missing. Nothing is copied twice.
+**Resuming:** everything already transferred is in the index and in transfer history, so **Check for new photos** after an interruption shows only what is still missing, without reading the already-copied files from the phone again. Nothing is copied twice.
 
 **Tested on a real iPhone** (441 items, 477 files, 4.3 GB) through the app: the transfer was cancelled after 60 items (no `.partial` file left), then **Copy remaining** finished the other 381 in about two minutes (roughly 30 MB/s), with 0 failures. Two photos that exist twice on the phone were copied once. Reading all 477 files from the phone again and comparing them by SHA-256 found every one identical in the destination. Month folders matched Windows' own *Date taken* / *Media created* for every file that has one, and object ids were confirmed to survive a reconnect.
+
+Crash recovery was also tested for real: the app was killed 8 seconds into a transfer, leaving 51 finished files and one half-written `.partial` video. At the next start, the `.partial` was removed and nothing else was touched. **Check for new photos** then recognised all 51 copied items from transfer history without reading the phone, and listed the remaining 390 as new.
 
 Tested against a simulated iPhone for: successful copies, read failures and retries, a disconnected phone, a missing or read-only destination, cancellation, verification (hash) mismatch, wrong content and wrong sizes from the phone, HEIC→JPEG conversion, name conflicts (`IMG.jpg` → `IMG (1).jpg` → `IMG (2).jpg`), Live Photo pairing and retries, folder organization by capture date, and progress reporting.
 
@@ -261,7 +267,7 @@ Tested against a simulated iPhone for: successful copies, read failures and retr
 | Fewer photos than on the phone | Items stored only in iCloud aren't available over USB (see *Known limitations*). |
 | "The copy didn't match what your iPhone sent" | Retry. If it keeps happening, unplug and reconnect the iPhone. On the iPhone, set Settings → Apps → Photos → Transfer to Mac or PC → **Keep Originals**. |
 | "The destination drive is full" | Free up space or choose another folder, then use **Copy remaining**. Everything copied so far is kept. |
-| `*.partial` files in the destination | Left behind only if the app was killed mid-transfer. They are incomplete copies and are safe to delete. |
+| `*.partial` files in the destination | Left by a transfer that was interrupted (the app was killed or the PC lost power). Apple Drive removes its own at the next start; if the destination drive wasn't connected then, at a later start. They are incomplete copies and are safe to delete by hand. |
 | Anything else | Settings → **Open logs folder**, and include the latest log when reporting the problem. |
 
 ---
@@ -274,7 +280,7 @@ Tested against a simulated iPhone for: successful copies, read failures and retr
 4. ✅ SQLite media index with migrations
 5. ✅ SHA-256 exact duplicate detection
 6. ✅ Transfer engine: verified copies, folder organization by capture date, conflict-free names, progress, cancel, retry
-7. Crash recovery (cleaning up after an app killed mid-transfer) and faster resume
+7. ✅ Crash recovery, faster re-check from transfer history, single instance
 8. Perceptual hashing
 9. Thumbnails and media review UI
 10. History, filtering, accessibility polish, MSIX packaging

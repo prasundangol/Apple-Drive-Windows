@@ -22,6 +22,10 @@
     <AppleDriveArchitecture Condition="'$(AppleDriveArchitecture)' == ''">x64</AppleDriveArchitecture>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$(AppleDriveArchitecture)</RuntimeIdentifier>
     <PlatformTarget>$(AppleDriveArchitecture)</PlatformTarget>
+
+    <!-- Program.cs provides Main, to make the app single-instance. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

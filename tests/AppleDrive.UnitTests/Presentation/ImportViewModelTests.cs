@@ -134,6 +134,7 @@ public sealed class ImportViewModelTests : IDisposable
         Assert.False(viewModel.Transfer.HasFailures);
         Assert.False(viewModel.Transfer.CanRetryItems);
         Assert.True(File.Exists(_destination.Combine("IMG_2.JPG")));
+        Assert.Equal(2, _session.LastDestinationScan?.TotalFiles); // The dashboard count includes the new files.
 
         await viewModel.Transfer.OpenFolderCommand.ExecuteAsync(null);
         viewModel.Transfer.DoneCommand.Execute(null);
@@ -199,7 +200,7 @@ public sealed class ImportViewModelTests : IDisposable
         var index = new DestinationIndexService(
             new DestinationScanner(NullLogger<DestinationScanner>.Instance), _repository, TimeProvider.System, NullLogger<DestinationIndexService>.Instance);
         var lookup = new DestinationContentLookup(_repository, new Sha256HashService(), NullLogger<DestinationContentLookup>.Instance);
-        var detector = new ExactDuplicateDetector(_phone, lookup, new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
+        var detector = new ExactDuplicateDetector(_phone, lookup, _history, new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
         var analysis = new ImportAnalysisService(phoneScan, index, detector, _session, NullLogger<ImportAnalysisService>.Instance);
         var transfers = new MediaTransferService(
             _phone,
@@ -212,7 +213,7 @@ public sealed class ImportViewModelTests : IDisposable
             TimeProvider.System,
             NullLogger<MediaTransferService>.Instance);
         var fakeSettings = new FakeSettingsService(settings);
-        var transfer = new TransferViewModel(transfers, _session, fakeSettings, _shell, new InlineUiDispatcher(), NullLogger<TransferViewModel>.Instance);
+        var transfer = new TransferViewModel(transfers, index, _session, fakeSettings, _shell, new InlineUiDispatcher(), NullLogger<TransferViewModel>.Instance);
         return new ImportViewModel(analysis, _session, fakeSettings, _device, transfer, new InlineUiDispatcher());
     }
 

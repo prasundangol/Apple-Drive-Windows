@@ -89,6 +89,38 @@ public sealed class InMemoryTransferRepository : ITransferRepository
         }
     }
 
+    public Task SetTargetAsync(long id, string destinationPath, byte[] sha256, long fileSize, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var index = _transfers.FindIndex(record => record.Id == id);
+            _transfers[index] = _transfers[index] with { DestinationPath = destinationPath, Sha256 = sha256, FileSize = fileSize };
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<TransferSessionRecord>> GetRunningSessionsAsync(CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult<IReadOnlyList<TransferSessionRecord>>(
+                _sessions.Values.Where(session => session.Status == TransferSessionStatus.Running).ToList());
+        }
+    }
+
+    public Task<IReadOnlyList<TransferRecord>> GetCompletedUnderRootAsync(string root, CancellationToken cancellationToken)
+    {
+        var prefix = root.EndsWith('\\') ? root : root + '\\';
+        lock (_lock)
+        {
+            return Task.FromResult<IReadOnlyList<TransferRecord>>(_transfers
+                .Where(record => record.Status == TransferStatus.Completed
+                    && record.DestinationPath?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true)
+                .ToList());
+        }
+    }
+
     public Task<IReadOnlyList<TransferRecord>> GetInProgressAsync(CancellationToken cancellationToken)
     {
         lock (_lock)

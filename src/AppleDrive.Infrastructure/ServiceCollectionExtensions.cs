@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICaptureDateReader, CaptureDateReader>();
         services.AddSingleton<DestinationNameReservations>();
         services.AddSingleton<MediaTransferService>();
+        services.AddSingleton<TransferRecoveryService>();
         return services;
     }
 }

@@ -43,6 +43,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _services = ConfigureServices(paths, logLevel);
         logLevel.SetLevel(_services.GetRequiredService<ISettingsService>().Current.LogLevel);
         MigrateDatabase(_services.GetRequiredService<DatabaseMigrator>());
+        RecoverInterruptedTransfers(_services.GetRequiredService<TransferRecoveryService>());
 
         _window = new MainWindow();
         _window.Closed += (_, _) => Shutdown();
@@ -87,6 +88,35 @@ public partial class App : Microsoft.UI.Xaml.Application
             Log.Error(exception, "Media index could not be prepared");
         }
     }
+
+    /// <summary>
+    /// Finishes or cleans up transfers left unfinished when the app last stopped. Only this
+    /// (single) instance can be transferring, and nothing has started yet, so it is safe to run
+    /// here. It touches only the few records left in progress, so it is quick.
+    /// </summary>
+    private static void RecoverInterruptedTransfers(TransferRecoveryService recovery)
+    {
+        try
+        {
+            Task.Run(() => recovery.RecoverAsync(CancellationToken.None)).GetAwaiter().GetResult();
+        }
+        catch (DatabaseException exception)
+        {
+            Log.Error(exception, "Interrupted transfers could not be recovered");
+        }
+    }
+
+    /// <summary>A second launch was redirected here: bring the existing window forward.</summary>
+    internal void OnRedirectedActivation() =>
+        _window?.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_window.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter { State: Microsoft.UI.Windowing.OverlappedPresenterState.Minimized } presenter)
+            {
+                presenter.Restore();
+            }
+
+            _window.Activate();
+        });
 
     private void Shutdown()
     {

@@ -69,7 +69,7 @@ internal static class PipelineChecks
             var hashes = new Sha256HashService();
             var lookup = new DestinationContentLookup(media, hashes, new ConsoleLogger<DestinationContentLookup>());
             var index = new DestinationIndexService(new DestinationScanner(new ConsoleLogger<DestinationScanner>()), media, TimeProvider.System, new ConsoleLogger<DestinationIndexService>());
-            var detector = new ExactDuplicateDetector(source, lookup, hashes, new ConsoleLogger<ExactDuplicateDetector>());
+            var detector = new ExactDuplicateDetector(source, lookup, history, hashes, new ConsoleLogger<ExactDuplicateDetector>());
             var service = new MediaTransferService(
                 source, hashes, new CaptureDateReader(), lookup, media, history, new DestinationNameReservations(), TimeProvider.System, new ConsoleLogger<MediaTransferService>());
 

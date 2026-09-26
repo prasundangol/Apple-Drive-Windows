@@ -15,6 +15,12 @@ public sealed class TransferRepository(SqliteDatabase database) : ITransferRepos
         FROM Transfers
         """;
 
+    private const string SelectSessions = """
+        SELECT Id, DeviceName, DestinationRoot, StartedAt, CompletedAt, Status,
+               TransferredCount, SkippedCount, FailedCount, TransferredBytes
+        FROM TransferSessions
+        """;
+
     public Task CreateSessionAsync(TransferSessionRecord session, CancellationToken cancellationToken) =>
         ExecuteAsync(
             """
@@ -37,26 +43,9 @@ public sealed class TransferRepository(SqliteDatabase database) : ITransferRepos
             SessionRow.From(session),
             cancellationToken);
 
-    public async Task<TransferSessionRecord?> GetSessionAsync(string sessionId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await using var connection = await database.OpenAsync(cancellationToken).ConfigureAwait(false);
-            var row = await connection.QuerySingleOrDefaultAsync<SessionRow>(new CommandDefinition(
-                """
-                SELECT Id, DeviceName, DestinationRoot, StartedAt, CompletedAt, Status,
-                       TransferredCount, SkippedCount, FailedCount, TransferredBytes
-                FROM TransferSessions WHERE Id = @sessionId
-                """,
-                new { sessionId },
-                cancellationToken: cancellationToken)).ConfigureAwait(false);
-            return row?.ToEntity();
-        }
-        catch (SqliteException exception)
-        {
-            throw new DatabaseException("Reading transfer history failed.", exception);
-        }
-    }
+    public async Task<TransferSessionRecord?> GetSessionAsync(string sessionId, CancellationToken cancellationToken) =>
+        (await QuerySessionsAsync($"{SelectSessions} WHERE Id = @sessionId", new { sessionId }, cancellationToken).ConfigureAwait(false))
+            .SingleOrDefault();
 
     public async Task<long> AddAsync(TransferRecord record, CancellationToken cancellationToken)
     {
@@ -106,6 +95,38 @@ public sealed class TransferRepository(SqliteDatabase database) : ITransferRepos
 
     public Task<IReadOnlyList<TransferRecord>> GetInProgressAsync(CancellationToken cancellationToken) =>
         QueryAsync($"{SelectTransfers} WHERE Status = 0 ORDER BY Id", new { }, cancellationToken);
+
+    public Task SetTargetAsync(long id, string destinationPath, byte[] sha256, long fileSize, CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            "UPDATE Transfers SET DestinationPath = @destinationPath, Sha256 = @sha256, FileSize = @fileSize WHERE Id = @id",
+            new { id, destinationPath, sha256, fileSize },
+            cancellationToken);
+
+    public async Task<IReadOnlyList<TransferSessionRecord>> GetRunningSessionsAsync(CancellationToken cancellationToken) =>
+        await QuerySessionsAsync($"{SelectSessions} WHERE Status = 0 ORDER BY StartedAt", new { }, cancellationToken).ConfigureAwait(false);
+
+    public Task<IReadOnlyList<TransferRecord>> GetCompletedUnderRootAsync(string root, CancellationToken cancellationToken)
+    {
+        var (low, high) = MediaRepository.PrefixRange(root);
+        return QueryAsync(
+            $"{SelectTransfers} WHERE Status = 1 AND DestinationPath >= @low AND DestinationPath < @high ORDER BY Id",
+            new { low, high },
+            cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<TransferSessionRecord>> QuerySessionsAsync(string sql, object parameters, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = await database.OpenAsync(cancellationToken).ConfigureAwait(false);
+            var rows = await connection.QueryAsync<SessionRow>(new CommandDefinition(sql, parameters, cancellationToken: cancellationToken)).ConfigureAwait(false);
+            return rows.Select(row => row.ToEntity()).ToList();
+        }
+        catch (SqliteException exception)
+        {
+            throw new DatabaseException("Reading transfer history failed.", exception);
+        }
+    }
 
     private async Task<IReadOnlyList<TransferRecord>> QueryAsync(string sql, object parameters, CancellationToken cancellationToken)
     {

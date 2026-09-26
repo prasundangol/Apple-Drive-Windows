@@ -77,6 +77,14 @@ internal static class Migrations
             -- Crash recovery: transfers that never finished.
             CREATE INDEX IX_Transfers_InProgress ON Transfers (Id) WHERE Status = 0;
             """),
+
+        new(3, "Transfer history lookups", """
+            -- Completed transfers into a destination folder (prefix range), for a faster re-check.
+            CREATE INDEX IX_Transfers_Completed_DestinationPath ON Transfers (DestinationPath) WHERE Status = 1;
+
+            -- Sessions left running by a crash, closed at startup.
+            CREATE INDEX IX_TransferSessions_Running ON TransferSessions (StartedAt) WHERE Status = 0;
+            """),
     ];
 
     public static int LatestVersion => All[^1].Version;

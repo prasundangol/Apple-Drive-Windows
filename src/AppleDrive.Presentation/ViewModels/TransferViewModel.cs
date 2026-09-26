@@ -26,6 +26,7 @@ public sealed record FailedFileRow(string FileName, string Reason);
 public sealed partial class TransferViewModel : ObservableObject
 {
     private readonly MediaTransferService _transfers;
+    private readonly DestinationIndexService _index;
     private readonly ImportSession _session;
     private readonly ISettingsService _settings;
     private readonly IShellServices _shell;
@@ -35,6 +36,7 @@ public sealed partial class TransferViewModel : ObservableObject
 
     public TransferViewModel(
         MediaTransferService transfers,
+        DestinationIndexService index,
         ImportSession session,
         ISettingsService settings,
         IShellServices shell,
@@ -43,6 +45,7 @@ public sealed partial class TransferViewModel : ObservableObject
     {
         _logger = logger;
         _transfers = transfers;
+        _index = index;
         _session = session;
         _settings = settings;
         _shell = shell;
@@ -274,6 +277,10 @@ public sealed partial class TransferViewModel : ObservableObject
 
             ShowSummary(result.Value);
             State = TransferViewState.Finished;
+            if (result.Value.TransferredCount > 0)
+            {
+                await RefreshDestinationAsync(result.Value.DestinationRoot);
+            }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -288,6 +295,20 @@ public sealed partial class TransferViewModel : ObservableObject
         {
             _cancellation = null;
             IsCancelling = false;
+        }
+    }
+
+    /// <summary>Re-reads the destination so the dashboard's count includes the new files. Quick: unchanged files keep their index records.</summary>
+    private async Task RefreshDestinationAsync(string root)
+    {
+        var sync = await _index.SyncAsync(root, null, CancellationToken.None);
+        if (sync.IsSuccess)
+        {
+            _session.SetDestinationScan(sync.Value);
+        }
+        else
+        {
+            _logger.LogWarning("Could not refresh the destination after a transfer: {Error}", sync.Error);
         }
     }
 

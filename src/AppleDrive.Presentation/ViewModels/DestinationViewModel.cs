@@ -32,6 +32,7 @@ public sealed partial class DestinationViewModel : ObservableObject
         _dispatcher = dispatcher;
         Folder = settings.Current.DestinationFolder ?? string.Empty;
         settings.SettingsChanged += OnSettingsChanged;
+        session.Changed += (_, _) => dispatcher.Post(() => ApplySummary(session.LastDestinationScan));
         ApplySummary(session.LastDestinationScan);
     }
 

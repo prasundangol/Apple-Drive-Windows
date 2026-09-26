@@ -9,4 +9,7 @@ public enum TransferSessionStatus
 
     /// <summary>Ended early by an error that affects every remaining file (phone unplugged, disk full…).</summary>
     Stopped = 3,
+
+    /// <summary>The app stopped while the run was in progress; closed by recovery at the next start.</summary>
+    Interrupted = 4,
 }

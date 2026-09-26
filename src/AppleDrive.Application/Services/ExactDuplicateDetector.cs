@@ -17,10 +17,14 @@ public sealed record DuplicateCheckProgress(int ItemsChecked, int TotalItems, in
 /// without being read. Only when sizes match is the phone file hashed, and destination hashes
 /// are computed on first need and stored in the index. A file is an exact duplicate only when
 /// SHA-256 digests are equal; matching metadata alone never makes a duplicate.
+/// The one shortcut: a file this app itself transferred earlier (same persistent id, name and
+/// size, verified by SHA-256 at the time), whose copy is still unchanged in the index, is a
+/// duplicate without reading the phone again. The proof is that transfer's own hash.
 /// </remarks>
 public sealed class ExactDuplicateDetector(
     IPhonePhotoSource source,
     DestinationContentLookup destination,
+    ITransferRepository transferHistory,
     IHashService hashService,
     ILogger<ExactDuplicateDetector> logger)
 {
@@ -37,6 +41,11 @@ public sealed class ExactDuplicateDetector(
 
         try
         {
+            state.History = (await transferHistory.GetCompletedUnderRootAsync(root, cancellationToken).ConfigureAwait(false))
+                .Where(record => record is { SourcePersistentId: not null, Sha256: not null, DestinationPath: not null, FileSize: not null })
+                .GroupBy(record => record.SourcePersistentId!, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.OrderByDescending(record => record.Id).ToList(), StringComparer.Ordinal);
+
             for (var index = 0; index < items.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -69,8 +78,8 @@ public sealed class ExactDuplicateDetector(
 
         var plan = new ImportPlan(root, results, state.Unverified);
         logger.LogInformation(
-            "Duplicate check finished: {New} new, {Duplicates} exact duplicates, {Read} phone files read, {Unverified} unverified",
-            plan.NewCount, plan.ExactDuplicateCount, state.PhoneFilesRead, state.Unverified);
+            "Duplicate check finished: {New} new, {Duplicates} exact duplicates, {Read} phone files read, {FromHistory} known from earlier transfers, {Unverified} unverified",
+            plan.NewCount, plan.ExactDuplicateCount, state.PhoneFilesRead, state.FromHistory, state.Unverified);
         return plan;
     }
 
@@ -85,6 +94,12 @@ public sealed class ExactDuplicateDetector(
         {
             // No destination file has this size, so none can be identical.
             return new ComponentClassification(asset, AssetStatus.New);
+        }
+
+        if (await FindEarlierTransferAsync(asset, state, cancellationToken).ConfigureAwait(false) is { } earlier)
+        {
+            state.FromHistory++;
+            return new ComponentClassification(asset, AssetStatus.ExactDuplicate, earlier.FullPath, earlier.Sha256);
         }
 
         var phoneHash = await HashPhoneFileAsync(asset, state, cancellationToken).ConfigureAwait(false);
@@ -147,12 +162,42 @@ public sealed class ExactDuplicateDetector(
         }
     }
 
+    /// <summary>
+    /// The destination file an earlier transfer made from this very phone file, if it is still
+    /// there unchanged. Identity needs the persistent id, the name and the exact size to agree.
+    /// </summary>
+    private async Task<IndexedMediaFile?> FindEarlierTransferAsync(PhotoAsset asset, RunState state, CancellationToken cancellationToken)
+    {
+        if (asset.PersistentId is not { } persistentId
+            || asset.ReportedSize is not { } size
+            || !state.History.TryGetValue(persistentId, out var earlier))
+        {
+            return null;
+        }
+
+        foreach (var record in earlier)
+        {
+            if (record.FileSize == size
+                && string.Equals(record.SourceFileName, asset.FileName, StringComparison.OrdinalIgnoreCase)
+                && await destination.GetUnchangedAsync(record.DestinationPath!, record.Sha256!, cancellationToken).ConfigureAwait(false) is { } file)
+            {
+                return file;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Errors that mean the phone is gone; continuing would only produce more failures.</summary>
     private static bool IsFatal(AppError error) => error.Kind is
         ErrorKind.Cancelled or ErrorKind.DeviceDisconnected or ErrorKind.DeviceNotFound or ErrorKind.DeviceLockedOrUntrusted;
 
     private sealed class RunState
     {
+        public Dictionary<string, List<TransferRecord>> History { get; set; } = [];
+
+        public int FromHistory { get; set; }
+
         public int PhoneFilesRead { get; set; }
 
         public int Unverified { get; set; }
