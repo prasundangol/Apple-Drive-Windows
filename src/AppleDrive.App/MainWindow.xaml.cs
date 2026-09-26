@@ -18,6 +18,7 @@ public sealed partial class MainWindow : Microsoft.UI.Xaml.Window
         Title = Strings.AppTitle;
 
         AppWindow.Resize(new SizeInt32(1180, 800));
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppleDrive.ico"));
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.PreferredMinimumWidth = 720;

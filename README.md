@@ -4,7 +4,7 @@ Apple Drive is a Windows desktop app that copies photos and videos from an iPhon
 
 Apple Drive never deletes or changes anything on your iPhone, never overwrites files on your PC, and never sends your photos anywhere. Everything runs locally and offline.
 
-> **Status:** early development. Detecting an iPhone, reading its media, destination indexing, exact and visually-similar duplicate detection, and verified transfers with crash recovery, and a review screen with previews work. History, polish and packaging are next. See [Roadmap](#roadmap).
+> **Status:** version 0.1, feature-complete for the first release. Detecting an iPhone, reading its media, destination indexing, exact and visually similar duplicate detection, a review screen with previews, verified transfers with crash recovery, transfer history, and an MSIX package all work. See [Roadmap](#roadmap).
 
 ---
 
@@ -45,6 +45,31 @@ dotnet test --solution AppleDrive.slnx
 ```
 
 For ARM64, add `-p:Platform=ARM64`.
+
+Everyday builds run **unpackaged**: `dotnet run` and the `.exe` in `bin` work directly, with no installation.
+
+### Installing the MSIX package
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/Build-Package.ps1            # x64; add -Platform ARM64 for ARM
+```
+
+This builds a self-contained, signed package in `artifacts\package\…\AppleDrive.App_<version>_<platform>.msix`. The script signs it with a code-signing certificate for `CN=Prasun Dangol`, which must match the manifest's publisher. It creates the certificate in your user certificate store the first time (no administrator rights needed) and exports its public part as `artifacts\package\AppleDrive.cer`.
+
+Windows installs a package only when it trusts the signer. A self-signed certificate must be trusted once per PC, which needs administrator rights. In an **administrator** PowerShell:
+
+```powershell
+Import-Certificate -FilePath artifacts\package\AppleDrive.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage artifacts\package\AppleDrive.App_0.1.0.0_x64_Test\AppleDrive.App_0.1.0.0_x64.msix
+```
+
+Then start **Apple Drive** from the Start menu. To uninstall, use *Settings → Apps*, or `Get-AppxPackage PrasunDangol.AppleDrive | Remove-AppxPackage`. To remove the trust again, delete the certificate from *Trusted People* (`certlm.msc`). For public distribution, sign with a certificate from a trusted certificate authority, or publish through the Microsoft Store, instead of the self-signed one.
+
+Notes:
+
+- The installed app runs with full trust (`runFullTrust`), as a desktop app needs to talk to the iPhone through Windows Portable Devices. It asks for no other capabilities and never requires administrator rights.
+- Windows keeps an installed app's `%LOCALAPPDATA%` writes in the package's own storage. So the installed app has its own settings, media index and history, separate from the unpackaged developer build's.
+- The icons are drawn by `tools/Generate-Icons.ps1` into `src/AppleDrive.App/Assets`.
 
 ### Device probe (diagnostics)
 
@@ -265,6 +290,18 @@ Previews are 256 px JPEGs, generated asynchronously on first display and cached 
 
 Phone reads for previews are one at a time, like every phone read, and always to the end of the file.
 
+## History
+
+**History** lists past transfers, newest first, each with its date, device, status (completed, cancelled, stopped early, or interrupted by an app crash) and totals. Selecting one lists its files, failed ones first, with the reason in plain language. **Open folder** opens that transfer's destination. Files that were already in the destination before a transfer aren't listed individually; they're counted as skipped. The Dashboard shows the **Last import** with a link to the history.
+
+## Accessibility
+
+- Every status is shown with an icon *and* text (for example ✓ New, possible duplicate, already in destination, failed), never by colour alone.
+- All colours come from WinUI theme resources, so light, dark and high-contrast themes work.
+- Every control has an accessible name. Review cards and history entries have one summary name each, for screen readers.
+- Keyboard: **Tab** moves between areas. In the review grid, Tab enters the grid once and the arrow keys move between items; Space ticks or unticks the item.
+- Layouts fit the smallest window size (720 px wide).
+
 ## Transferring
 
 After **Check for new photos**, **Start transfer** shows a confirmation with the number of new items, the duplicates that will be skipped, the total size, the destination and the folder layout. Nothing starts until you confirm. While it runs, the page shows items done, the current file, bytes copied, speed, and the time remaining (only once the speed has settled). It also shows running counts of files transferred, skipped and failed. **Cancel** is always available.
@@ -341,7 +378,7 @@ Tested against a simulated iPhone for: successful copies, read failures and retr
 7. ✅ Crash recovery, faster re-check from transfer history, single instance
 8. ✅ Perceptual hashing: possible duplicates, shown and never skipped silently
 9. ✅ Thumbnails and media review screen: previews, per-item Keep both / Skip, filters, sorting, search
-10. History, filtering, accessibility polish, MSIX packaging
+10. ✅ History page, last import, preview cache settings, accessibility and narrow-window layout, app icon, signed MSIX package
 
 ---
 

@@ -8,6 +8,7 @@
     <RootNamespace>AppleDrive.App</RootNamespace>
     <AssemblyName>AppleDrive</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\AppleDrive.ico</ApplicationIcon>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
 
@@ -27,6 +28,11 @@
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <!-- Visual assets for the MSIX package (tools/Build-Package.ps1); the .ico is also the window icon. -->
+  <ItemGroup>
+    <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AppleDrive.Presentation\AppleDrive.Presentation.csproj" />
