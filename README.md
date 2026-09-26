@@ -68,7 +68,7 @@ Then start **Apple Drive** from the Start menu. To uninstall, use *Settings → 
 Notes:
 
 - The installed app runs with full trust (`runFullTrust`), as a desktop app needs to talk to the iPhone through Windows Portable Devices. It asks for no other capabilities and never requires administrator rights.
-- Windows keeps an installed app's `%LOCALAPPDATA%` writes in the package's own storage. So the installed app has its own settings, media index and history, separate from the unpackaged developer build's.
+- The installed app keeps its settings, media index, history, logs and previews in its package folder, `%LOCALAPPDATA%\Packages\PrasunDangol.AppleDrive_…\LocalState\AppleDrive`, separate from the unpackaged build's `%LOCALAPPDATA%\AppleDrive`. Sharing one folder is avoided on purpose: a packaged desktop app may change files that already exist in `%LOCALAPPDATA%`, but Windows redirects the files it *creates* there into package storage. Testing showed that would split one data set in two, for example the index database from the `-wal` file SQLite creates each session.
 - The icons are drawn by `tools/Generate-Icons.ps1` into `src/AppleDrive.App/Assets`.
 
 ### Device probe (diagnostics)
@@ -176,6 +176,7 @@ All app data lives under `%LOCALAPPDATA%\AppleDrive\`:
 | Path | Contents |
 |---|---|
 | `settings.json` | User preferences (written atomically) |
+| *(installed from the MSIX)* | The same files, in `%LOCALAPPDATA%\Packages\PrasunDangol.AppleDrive_…\LocalState\AppleDrive` instead |
 | `Thumbnails\` | Preview cache (256 px JPEGs, safe to delete; they are made again when needed) |
 | `media-index.db` | Index of destination media (see [Destination scanning](#destination-scanning-and-the-media-index)) |
 | `Logs\apple-drive-YYYYMMDD.log` | Diagnostic logs, 14 days retained. Settings → *Open logs folder*. |
