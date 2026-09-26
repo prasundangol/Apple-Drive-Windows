@@ -25,6 +25,8 @@ public static class Previews
 
     public static string Facts(string kind, string size, string date) => $"{kind} · {size} · {date}";
 
+    public static string Pair(string first, string second) => $"{first} · {second}";
+
     public static string StatusGlyph(AssetStatus status) => status switch
     {
         AssetStatus.ExactDuplicate => "",

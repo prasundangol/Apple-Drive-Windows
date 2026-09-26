@@ -20,4 +20,16 @@ public interface IThumbnailService
 
     /// <summary>Path of a cached preview of a file on disk (photo or video), or <c>null</c> when none can be made.</summary>
     Task<string?> GetFileThumbnailAsync(string path, CancellationToken cancellationToken);
+
+    /// <summary>The folder previews are kept in (from settings, or the default).</summary>
+    string CacheFolder { get; }
+
+    /// <summary>Number of previews in the cache and the bytes they take.</summary>
+    Task<(int Count, long Bytes)> GetCacheSizeAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Deletes the cached previews; they are made again when needed. Only files the cache itself
+    /// created are removed, whatever else the folder holds. Returns the number deleted.
+    /// </summary>
+    Task<int> ClearCacheAsync(CancellationToken cancellationToken);
 }

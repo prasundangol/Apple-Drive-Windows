@@ -139,6 +139,38 @@ public sealed class ThumbnailServiceTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
+    public async Task Clearing_removes_only_the_caches_own_files()
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            await _service.GetPhoneThumbnailAsync(_phone.AddFile($"Internal Storage/a/IMG_2{i:D3}.JPG", TestImages.Render(20 + i)), Ct);
+        }
+
+        // Someone pointed the cache at a folder with their own pictures in it.
+        var root = _data.Combine("Previews");
+        var userPhoto = Path.Combine(root, "Holiday.jpg");
+        var userFolder = Path.Combine(root, "ab", "notes.jpg");
+        var lookalikeFolder = Path.Combine(root, "Trips", new string('a', 40) + ".jpg");
+        foreach (var path in new[] { userPhoto, userFolder, lookalikeFolder })
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllBytesAsync(path, [1, 2, 3], Ct);
+        }
+
+        var before = await _service.GetCacheSizeAsync(Ct);
+        var cleared = await _service.ClearCacheAsync(Ct);
+        var after = await _service.GetCacheSizeAsync(Ct);
+
+        Assert.Equal(3, before.Count);
+        Assert.True(before.Bytes > 0);
+        Assert.Equal(3, cleared);
+        Assert.Equal((0, 0L), after);
+        Assert.True(File.Exists(userPhoto));
+        Assert.True(File.Exists(userFolder));
+        Assert.True(File.Exists(lookalikeFolder));
+    }
+
+    [Fact]
     public async Task Destination_files_get_previews_from_the_shell()
     {
         var path = _files.Combine("Holiday.jpg");

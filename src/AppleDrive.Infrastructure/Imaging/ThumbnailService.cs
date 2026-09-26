@@ -27,7 +27,7 @@ namespace AppleDrive.Infrastructure.Imaging;
 /// <para>Destination previews come from the Windows shell, which also covers videos and uses the
 /// system thumbnail cache.</para>
 /// </remarks>
-public sealed class ThumbnailService : IThumbnailService, IDisposable
+public sealed partial class ThumbnailService : IThumbnailService, IDisposable
 {
     private readonly IPhonePhotoSource _source;
     private readonly ISettingsService _settings;
@@ -83,7 +83,64 @@ public sealed class ThumbnailService : IThumbnailService, IDisposable
         _files.Dispose();
     }
 
-    private string CacheFolder => _settings.Current.ThumbnailCacheFolder ?? _paths.DefaultThumbnailCacheFolder;
+    public string CacheFolder => _settings.Current.ThumbnailCacheFolder ?? _paths.DefaultThumbnailCacheFolder;
+
+    public Task<(int Count, long Bytes)> GetCacheSizeAsync(CancellationToken cancellationToken) =>
+        Task.Run(
+            () =>
+            {
+                var files = OwnFiles(CacheFolder).ToList();
+                return (files.Count(file => file.Extension == ".jpg"), files.Sum(file => file.Length));
+            },
+            cancellationToken);
+
+    public Task<int> ClearCacheAsync(CancellationToken cancellationToken) =>
+        Task.Run(
+            () =>
+            {
+                var deleted = 0;
+                foreach (var file in OwnFiles(CacheFolder))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        file.Delete();
+                        deleted++;
+                    }
+                    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                    {
+                        _logger.LogDebug(exception, "Could not delete a cached preview");
+                    }
+                }
+
+                foreach (var folder in OwnFolders(CacheFolder).Where(folder => !folder.EnumerateFileSystemInfos().Any()))
+                {
+                    folder.Delete();
+                }
+
+                _logger.LogInformation("Cleared {Count} cached previews", deleted);
+                return deleted;
+            },
+            cancellationToken);
+
+    /// <summary>The cache's own sub-folders: two lower-case hex digits.</summary>
+    private static IEnumerable<DirectoryInfo> OwnFolders(string root) =>
+        Directory.Exists(root)
+            ? new DirectoryInfo(root).EnumerateDirectories().Where(folder => OwnFolderName().IsMatch(folder.Name))
+            : [];
+
+    /// <summary>
+    /// Files the cache created: <c>&lt;40 hex&gt;.jpg</c> and its unfinished <c>.tmp</c> files, in its own
+    /// sub-folders. Anything else in the folder, such as the user's photos, is never touched.
+    /// </summary>
+    private static IEnumerable<FileInfo> OwnFiles(string root) =>
+        OwnFolders(root).SelectMany(folder => folder.EnumerateFiles()).Where(file => OwnFileName().IsMatch(file.Name));
+
+    [System.Text.RegularExpressions.GeneratedRegex("^[0-9a-f]{2}$")]
+    private static partial System.Text.RegularExpressions.Regex OwnFolderName();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^[0-9a-f]{40}\.jpg(\.[0-9a-f]{32}\.tmp)?$")]
+    private static partial System.Text.RegularExpressions.Regex OwnFileName();
 
     private async Task<string?> GetAsync(string key, Func<string, CancellationToken, Task<bool>> create, CancellationToken cancellationToken)
     {

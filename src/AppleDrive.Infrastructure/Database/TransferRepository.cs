@@ -102,6 +102,9 @@ public sealed class TransferRepository(SqliteDatabase database) : ITransferRepos
             new { id, destinationPath, sha256, fileSize },
             cancellationToken);
 
+    public async Task<IReadOnlyList<TransferSessionRecord>> GetRecentSessionsAsync(int limit, CancellationToken cancellationToken) =>
+        await QuerySessionsAsync($"{SelectSessions} ORDER BY StartedAt DESC LIMIT @limit", new { limit }, cancellationToken).ConfigureAwait(false);
+
     public async Task<IReadOnlyList<TransferSessionRecord>> GetRunningSessionsAsync(CancellationToken cancellationToken) =>
         await QuerySessionsAsync($"{SelectSessions} WHERE Status = 0 ORDER BY StartedAt", new { }, cancellationToken).ConfigureAwait(false);
 

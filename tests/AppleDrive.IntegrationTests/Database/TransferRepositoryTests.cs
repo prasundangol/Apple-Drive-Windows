@@ -97,6 +97,19 @@ public sealed class TransferRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Recent_sessions_are_newest_first_and_limited()
+    {
+        for (var day = 0; day < 5; day++)
+        {
+            await _repository.CreateSessionAsync(Session($"s{day}") with { StartedAt = Now.AddDays(day) }, Ct);
+        }
+
+        var recent = await _repository.GetRecentSessionsAsync(3, Ct);
+
+        Assert.Equal(["s4", "s3", "s2"], recent.Select(session => session.Id));
+    }
+
+    [Fact]
     public async Task Transfer_requires_an_existing_session()
     {
         await Assert.ThrowsAsync<DatabaseException>(() => _repository.AddAsync(Transfer("missing", "a.jpg"), Ct));

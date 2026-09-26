@@ -67,6 +67,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         services.AddSingleton<TransferViewModel>();
         services.AddSingleton<ImportViewModel>();
         services.AddSingleton<ReviewViewModel>();
+        services.AddSingleton<HistoryViewModel>();
         services.AddSingleton<DashboardViewModel>();
         services.AddTransient<SettingsViewModel>();
 

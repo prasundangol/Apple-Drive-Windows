@@ -209,6 +209,31 @@
                 </Grid>
             </Border>
 
+            <!-- Last import -->
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="4">
+                        <TextBlock
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="{x:Bind res:Strings.LastImportHeader}"
+                            AutomationProperties.HeadingLevel="Level2" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind ViewModel.LastImportText, Mode=OneWay}"
+                            TextWrapping="WrapWholeWords" />
+                    </StackPanel>
+                    <HyperlinkButton
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Click="OnViewHistory"
+                        Content="{x:Bind res:Strings.ViewHistory}" />
+                </Grid>
+            </Border>
+
             <!-- Scan progress -->
             <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.Scan.IsScanning, Mode=OneWay}">
                 <Grid ColumnSpacing="16">

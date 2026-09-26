@@ -90,6 +90,7 @@ public sealed class DatabaseMigratorTests : IDisposable
     [InlineData("SELECT Id FROM Transfers WHERE SessionId = 's' ORDER BY Id", "IX_Transfers_SessionId_Status")]
     [InlineData("SELECT Id FROM Transfers WHERE SessionId = 's' AND Status = 2", "IX_Transfers_SessionId_Status")]
     [InlineData("SELECT Id FROM Transfers WHERE Status = 0 ORDER BY Id", "IX_Transfers_InProgress")]
+    [InlineData("SELECT Id FROM TransferSessions ORDER BY StartedAt DESC LIMIT 200", "IX_TransferSessions_StartedAt")]
     public async Task Frequent_queries_use_an_index(string sql, string expectedIndex)
     {
         var database = new SqliteDatabase(_directory.Combine("index.db"));

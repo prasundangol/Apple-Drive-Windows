@@ -85,6 +85,11 @@ internal static class Migrations
             -- Sessions left running by a crash, closed at startup.
             CREATE INDEX IX_TransferSessions_Running ON TransferSessions (StartedAt) WHERE Status = 0;
             """),
+
+        new(4, "Transfer history listing", """
+            -- The history page lists sessions newest first.
+            CREATE INDEX IX_TransferSessions_StartedAt ON TransferSessions (StartedAt);
+            """),
     ];
 
     public static int LatestVersion => All[^1].Version;

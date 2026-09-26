@@ -1,6 +1,7 @@
 using AppleDrive.Application.Interfaces;
 using AppleDrive.Application.Settings;
 using AppleDrive.Domain.Enums;
+using AppleDrive.Presentation.Formatting;
 using AppleDrive.Presentation.Resources;
 using AppleDrive.Presentation.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,16 +19,32 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ILogLevelController _logLevel;
     private readonly IShellServices _shell;
     private readonly IAppPaths _paths;
+    private readonly IThumbnailService _previews;
     private bool _loading;
 
-    public SettingsViewModel(ISettingsService settings, ILogLevelController logLevel, IShellServices shell, IAppPaths paths)
+    public SettingsViewModel(ISettingsService settings, ILogLevelController logLevel, IShellServices shell, IAppPaths paths, IThumbnailService previews)
     {
         _settings = settings;
         _logLevel = logLevel;
         _shell = shell;
         _paths = paths;
+        _previews = previews;
         Load(settings.Current);
+        _ = RefreshPreviewsAsync();
     }
+
+    /// <summary>Sub-folder created inside a folder the user picks, so the cache never mixes with their files.</summary>
+    public const string PreviewFolderName = "Apple Drive previews";
+
+    [ObservableProperty]
+    public partial string PreviewFolder { get; private set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string PreviewSizeText { get; private set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(UseDefaultPreviewFolderCommand))]
+    public partial bool HasCustomPreviewFolder { get; private set; }
 
     public IReadOnlyList<Choice<FolderOrganization>> OrganizationChoices { get; } =
     [
@@ -71,6 +88,44 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         DestinationFolder = folder;
         await _settings.UpdateAsync(current => current with { DestinationFolder = folder });
+    }
+
+    [RelayCommand]
+    private async Task ChoosePreviewFolderAsync()
+    {
+        var folder = await _shell.PickFolderAsync();
+        if (folder is null)
+        {
+            return;
+        }
+
+        await _settings.UpdateAsync(current => current with { ThumbnailCacheFolder = Path.Combine(folder, PreviewFolderName) });
+        await RefreshPreviewsAsync();
+    }
+
+    private bool CanUseDefaultPreviewFolder() => HasCustomPreviewFolder;
+
+    [RelayCommand(CanExecute = nameof(CanUseDefaultPreviewFolder))]
+    private async Task UseDefaultPreviewFolderAsync()
+    {
+        await _settings.UpdateAsync(current => current with { ThumbnailCacheFolder = null });
+        await RefreshPreviewsAsync();
+    }
+
+    /// <summary>Deletes cached previews only; they are made again when the review screen needs them.</summary>
+    [RelayCommand]
+    private async Task ClearPreviewsAsync()
+    {
+        await _previews.ClearCacheAsync(CancellationToken.None);
+        await RefreshPreviewsAsync();
+    }
+
+    private async Task RefreshPreviewsAsync()
+    {
+        PreviewFolder = _previews.CacheFolder;
+        HasCustomPreviewFolder = _settings.Current.ThumbnailCacheFolder is not null;
+        var (count, bytes) = await _previews.GetCacheSizeAsync(CancellationToken.None);
+        PreviewSizeText = Strings.Format(Strings.PreviewsSizeFormat, count, ByteSize.Format(bytes));
     }
 
     [RelayCommand]

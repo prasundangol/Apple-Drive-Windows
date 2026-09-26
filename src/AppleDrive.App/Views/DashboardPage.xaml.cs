@@ -21,6 +21,8 @@ public sealed partial class DashboardPage : Microsoft.UI.Xaml.Controls.Page
         ViewModel.OnNavigatedTo();
     }
 
+    private void OnViewHistory(object sender, RoutedEventArgs e) => ShellPage.Current?.SelectSection("History");
+
     /// <summary>x:Bind helper: shows an element only when it has text to display.</summary>
     public Visibility IsNotEmpty(string? value) =>
         string.IsNullOrEmpty(value) ? Visibility.Collapsed : Visibility.Visible;

@@ -1,4 +1,5 @@
 using AppleDrive.Application.Services;
+using AppleDrive.Infrastructure.FileSystem;
 using AppleDrive.Domain.Enums;
 using AppleDrive.Domain.Results;
 using AppleDrive.Presentation.Resources;
@@ -20,6 +21,34 @@ public sealed class DashboardViewModelTests
     {
         _device = new DeviceStatusViewModel(_devices, _source, new InlineUiDispatcher(), NullLogger<DeviceStatusViewModel>.Instance);
         _scan = new PhoneScanViewModel(new PhoneScanService(_source, NullLogger<PhoneScanService>.Instance), _session, _device);
+    }
+
+    private DashboardViewModel CreateDashboard(InMemoryTransferRepository history)
+    {
+        var index = new DestinationIndexService(
+            new DestinationScanner(NullLogger<DestinationScanner>.Instance), new InMemoryMediaRepository(), TimeProvider.System, NullLogger<DestinationIndexService>.Instance);
+        var destination = new DestinationViewModel(new FakeSettingsService(), index, _session, new FakeShellServices(), new InlineUiDispatcher());
+        return new DashboardViewModel(_device, _scan, destination, history);
+    }
+
+    [Fact]
+    public async Task Shows_the_last_import_or_that_there_is_none()
+    {
+        // The in-memory history answers synchronously, so the text is there as soon as the page is shown.
+        var history = new InMemoryTransferRepository();
+        var dashboard = CreateDashboard(history);
+
+        dashboard.OnNavigatedTo();
+        Assert.Equal(Strings.LastImportNone, dashboard.LastImportText);
+
+        var started = new DateTimeOffset(2026, 9, 20, 10, 0, 0, TimeSpan.Zero);
+        await history.CreateSessionAsync(
+            new AppleDrive.Domain.Entities.TransferSessionRecord { Id = "s1", DestinationRoot = @"D:Photos", StartedAt = started, Status = TransferSessionStatus.Completed, TransferredCount = 12 },
+            CancellationToken.None);
+        dashboard.OnNavigatedTo();
+
+        Assert.StartsWith(started.ToLocalTime().ToString("D", System.Globalization.CultureInfo.CurrentCulture), dashboard.LastImportText);
+        Assert.Contains("12 transferred", dashboard.LastImportText);
     }
 
     [Fact]

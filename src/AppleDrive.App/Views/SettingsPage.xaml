@@ -82,6 +82,26 @@
                 </Grid>
             </Border>
 
+            <!-- Previews -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind res:Strings.PreviewsHeader}" />
+                        <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.PreviewsDescription}" TextWrapping="WrapWholeWords" />
+                    </StackPanel>
+                    <TextBlock IsTextSelectionEnabled="True" Text="{x:Bind ViewModel.PreviewFolder, Mode=OneWay}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind ViewModel.PreviewSizeText, Mode=OneWay}"
+                        AutomationProperties.LiveSetting="Polite" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Command="{x:Bind ViewModel.ChoosePreviewFolderCommand}" Content="{x:Bind res:Strings.ChangeFolder}" />
+                        <Button Command="{x:Bind ViewModel.UseDefaultPreviewFolderCommand}" Content="{x:Bind res:Strings.UseDefaultFolder}" />
+                        <Button Command="{x:Bind ViewModel.ClearPreviewsCommand}" Content="{x:Bind res:Strings.ClearPreviews}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- Diagnostics -->
             <Border Style="{StaticResource CardStyle}">
                 <Grid ColumnSpacing="16" RowSpacing="12">

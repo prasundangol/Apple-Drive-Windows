@@ -100,6 +100,11 @@ public sealed partial class ReviewItemViewModel : ObservableObject
     /// <summary>Accessible name for the item's check box.</summary>
     public string SelectAccessibleName => $"{SelectLabel}: {Name}";
 
+    /// <summary>Everything the card says, in one sentence, for screen readers.</summary>
+    public string CardAccessibleName => HasDetail
+        ? $"{Name}, {KindText}, {SizeText}, {DateText}, {StatusText}. {DetailText}"
+        : $"{Name}, {KindText}, {SizeText}, {DateText}, {StatusText}";
+
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 

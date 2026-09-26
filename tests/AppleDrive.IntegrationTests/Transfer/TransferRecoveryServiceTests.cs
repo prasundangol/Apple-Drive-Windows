@@ -234,6 +234,9 @@ public sealed class TransferRecoveryServiceTests : IAsyncLifetime
 
         public Task<IReadOnlyList<TransferSessionRecord>> GetRunningSessionsAsync(CancellationToken cancellationToken) => inner.GetRunningSessionsAsync(cancellationToken);
 
+        public Task<IReadOnlyList<TransferSessionRecord>> GetRecentSessionsAsync(int limit, CancellationToken cancellationToken) =>
+            inner.GetRecentSessionsAsync(limit, cancellationToken);
+
         public Task<IReadOnlyList<TransferRecord>> GetCompletedUnderRootAsync(string root, CancellationToken cancellationToken) =>
             inner.GetCompletedUnderRootAsync(root, cancellationToken);
     }

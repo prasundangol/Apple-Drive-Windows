@@ -100,6 +100,15 @@ public sealed class InMemoryTransferRepository : ITransferRepository
         return Task.CompletedTask;
     }
 
+    public Task<IReadOnlyList<TransferSessionRecord>> GetRecentSessionsAsync(int limit, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult<IReadOnlyList<TransferSessionRecord>>(
+                _sessions.Values.OrderByDescending(session => session.StartedAt).Take(limit).ToList());
+        }
+    }
+
     public Task<IReadOnlyList<TransferSessionRecord>> GetRunningSessionsAsync(CancellationToken cancellationToken)
     {
         lock (_lock)

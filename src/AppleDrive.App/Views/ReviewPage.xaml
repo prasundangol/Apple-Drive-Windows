@@ -42,42 +42,44 @@
                 AutomationProperties.LiveSetting="Polite" />
         </Grid>
 
-        <!-- Filters and selection -->
+        <!-- Search, filters, selection: three short rows that fit even the narrowest window. -->
         <StackPanel Grid.Row="1" Spacing="8">
+            <TextBox
+                MaxWidth="560"
+                HorizontalAlignment="Left"
+                MinWidth="280"
+                PlaceholderText="{x:Bind res:Strings.SearchPlaceholder}"
+                Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                AutomationProperties.Name="{x:Bind res:Strings.SearchPlaceholder}" />
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBox
-                    Width="220"
-                    PlaceholderText="{x:Bind res:Strings.SearchPlaceholder}"
-                    Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    AutomationProperties.Name="{x:Bind res:Strings.SearchPlaceholder}" />
                 <ComboBox
-                    MinWidth="170"
+                    MinWidth="150"
                     ItemsSource="{x:Bind StatusOptions}"
                     SelectedIndex="{x:Bind ViewModel.StatusFilterIndex, Mode=TwoWay}"
                     AutomationProperties.Name="{x:Bind res:Strings.FilterStatusLabel}" />
                 <ComboBox
-                    MinWidth="160"
+                    MinWidth="150"
                     ItemsSource="{x:Bind TypeOptions}"
                     SelectedIndex="{x:Bind ViewModel.TypeFilterIndex, Mode=TwoWay}"
                     AutomationProperties.Name="{x:Bind res:Strings.FilterTypeLabel}" />
                 <ComboBox
-                    MinWidth="120"
+                    MinWidth="110"
                     ItemsSource="{x:Bind ViewModel.YearOptions, Mode=OneWay}"
                     SelectedIndex="{x:Bind ViewModel.YearIndex, Mode=TwoWay}"
                     AutomationProperties.Name="{x:Bind res:Strings.FilterYearLabel}" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="8">
                 <ComboBox
-                    MinWidth="150"
+                    MinWidth="140"
                     ItemsSource="{x:Bind SortOptions}"
                     SelectedIndex="{x:Bind ViewModel.SortIndex, Mode=TwoWay}"
                     ToolTipService.ToolTip="{x:Bind res:Strings.SortLabel}"
                     AutomationProperties.Name="{x:Bind res:Strings.SortLabel}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Command="{x:Bind ViewModel.SelectAllCommand}" Content="{x:Bind res:Strings.SelectAll}" />
                 <Button Command="{x:Bind ViewModel.SelectNoneCommand}" Content="{x:Bind res:Strings.SelectNone}" />
                 <Button Command="{x:Bind ViewModel.SelectOnlyNewCommand}" Content="{x:Bind res:Strings.SelectOnlyNew}" />
                 <ToggleSwitch
-                    Margin="16,0,0,0"
+                    Margin="8,0,0,0"
                     IsOn="{x:Bind ViewModel.IncludePossibleDuplicates, Mode=TwoWay}"
                     OffContent="{x:Bind res:Strings.IncludePossibleDuplicatesToggle}"
                     OnContent="{x:Bind res:Strings.IncludePossibleDuplicatesToggle}"
@@ -109,7 +111,9 @@
                     x:Name="ItemsGrid"
                     ElementClearing="OnElementClearing"
                     ElementPrepared="OnElementPrepared"
-                    ItemsSource="{x:Bind ViewModel.VisibleItems, Mode=OneWay}">
+                    ItemsSource="{x:Bind ViewModel.VisibleItems, Mode=OneWay}"
+                    TabFocusNavigation="Once"
+                    XYFocusKeyboardNavigation="Enabled">
                     <ItemsRepeater.Layout>
                         <UniformGridLayout
                             ItemsStretch="Fill"
@@ -120,7 +124,10 @@
                     </ItemsRepeater.Layout>
                     <ItemsRepeater.ItemTemplate>
                         <DataTemplate x:DataType="vm:ReviewItemViewModel">
-                            <Border Padding="10" Style="{StaticResource CardStyle}">
+                            <Border
+                                Padding="10"
+                                Style="{StaticResource CardStyle}"
+                                AutomationProperties.Name="{x:Bind CardAccessibleName}">
                                 <Grid RowSpacing="6">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="160" />
@@ -165,7 +172,10 @@
                                             Background="{ThemeResource LayerFillColorDefaultBrush}"
                                             CornerRadius="4"
                                             Visibility="{x:Bind local:Previews.HasText(OtherPath)}">
-                                            <Image Source="{x:Bind local:Previews.Load(OtherThumbnail), Mode=OneWay}" Stretch="Uniform" />
+                                            <Image
+                                                Source="{x:Bind local:Previews.Load(OtherThumbnail), Mode=OneWay}"
+                                                Stretch="Uniform"
+                                                AutomationProperties.Name="{x:Bind DetailText}" />
                                             <Border
                                                 Margin="4"
                                                 Padding="4,1"

@@ -385,6 +385,60 @@ public static class Strings
 
     public static string InDestinationLabel => Get();
 
+    public static string UnknownDevice => Get();
+
+    public static string SessionCompleted => Get();
+
+    public static string SessionCancelled => Get();
+
+    public static string SessionStopped => Get();
+
+    public static string SessionInterrupted => Get();
+
+    public static string SessionRunning => Get();
+
+    public static string SessionSummaryFormat => Get();
+
+    public static string SessionFilesFormat => Get();
+
+    public static string HistoryFilesHeader => Get();
+
+    public static string HistoryFilesNote => Get();
+
+    public static string HistorySelectPrompt => Get();
+
+    public static string FileCopied => Get();
+
+    public static string FileAlreadyThere => Get();
+
+    public static string FileFailed => Get();
+
+    public static string FileNotCopied => Get();
+
+    public static string FileInterrupted => Get();
+
+    public static string FileInterruptedReason => Get();
+
+    public static string FileInProgress => Get();
+
+    public static string LastImportHeader => Get();
+
+    public static string LastImportNone => Get();
+
+    public static string LastImportFormat => Get();
+
+    public static string ViewHistory => Get();
+
+    public static string PreviewsHeader => Get();
+
+    public static string PreviewsDescription => Get();
+
+    public static string PreviewsSizeFormat => Get();
+
+    public static string UseDefaultFolder => Get();
+
+    public static string ClearPreviews => Get();
+
     /// <summary>Formats a resource string with the current culture.</summary>
     public static string Format(string format, params object?[] arguments) =>
         string.Format(CultureInfo.CurrentCulture, format, arguments);

@@ -16,6 +16,7 @@ public sealed partial class ShellPage : Page
     public ShellPage()
     {
         InitializeComponent();
+        Current = this;
         Loaded += (_, _) =>
         {
             if (Navigation.SelectedItem is null)
@@ -24,6 +25,13 @@ public sealed partial class ShellPage : Page
             }
         };
     }
+
+    /// <summary>The shell currently shown, for pages that link to another section.</summary>
+    public static ShellPage? Current { get; private set; }
+
+    /// <summary>Shows a section as if its navigation item had been clicked.</summary>
+    public void SelectSection(string tag) =>
+        Navigation.SelectedItem = Navigation.MenuItems.OfType<NavigationViewItem>().FirstOrDefault(item => item.Tag as string == tag);
 
     private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {

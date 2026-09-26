@@ -30,6 +30,9 @@ public interface ITransferRepository
     /// <summary>Transfers still marked <see cref="TransferStatus.InProgress"/>: the app stopped while they ran.</summary>
     Task<IReadOnlyList<TransferRecord>> GetInProgressAsync(CancellationToken cancellationToken);
 
+    /// <summary>The most recent sessions, newest first.</summary>
+    Task<IReadOnlyList<TransferSessionRecord>> GetRecentSessionsAsync(int limit, CancellationToken cancellationToken);
+
     /// <summary>Sessions still marked <see cref="TransferSessionStatus.Running"/>.</summary>
     Task<IReadOnlyList<TransferSessionRecord>> GetRunningSessionsAsync(CancellationToken cancellationToken);
 

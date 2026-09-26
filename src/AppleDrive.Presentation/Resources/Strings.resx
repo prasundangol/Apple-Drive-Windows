@@ -189,4 +189,31 @@
   <data name="ItemKeepBoth" xml:space="preserve"><value>Keep both</value></data>
   <data name="OnIphoneLabel" xml:space="preserve"><value>On iPhone</value></data>
   <data name="InDestinationLabel" xml:space="preserve"><value>In destination</value></data>
+  <data name="UnknownDevice" xml:space="preserve"><value>iPhone</value></data>
+  <data name="SessionCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="SessionCancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="SessionStopped" xml:space="preserve"><value>Stopped early</value></data>
+  <data name="SessionInterrupted" xml:space="preserve"><value>Interrupted (the app closed unexpectedly)</value></data>
+  <data name="SessionRunning" xml:space="preserve"><value>In progress</value></data>
+  <data name="SessionSummaryFormat" xml:space="preserve"><value>{0:N0} transferred · {1:N0} skipped · {2:N0} failed · {3}</value></data>
+  <data name="SessionFilesFormat" xml:space="preserve"><value>{0:N0} files copied or attempted, {1:N0} failed</value></data>
+  <data name="HistoryFilesHeader" xml:space="preserve"><value>Files</value></data>
+  <data name="HistoryFilesNote" xml:space="preserve"><value>Files already in the destination before the transfer aren&apos;t listed; they&apos;re counted as skipped.</value></data>
+  <data name="HistorySelectPrompt" xml:space="preserve"><value>Select a transfer to see its files.</value></data>
+  <data name="FileCopied" xml:space="preserve"><value>Copied</value></data>
+  <data name="FileAlreadyThere" xml:space="preserve"><value>Already in destination (found after copying)</value></data>
+  <data name="FileFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="FileNotCopied" xml:space="preserve"><value>Not copied (cancelled)</value></data>
+  <data name="FileInterrupted" xml:space="preserve"><value>Interrupted</value></data>
+  <data name="FileInterruptedReason" xml:space="preserve"><value>The app closed before this file was finished. Nothing incomplete was kept.</value></data>
+  <data name="FileInProgress" xml:space="preserve"><value>In progress</value></data>
+  <data name="LastImportHeader" xml:space="preserve"><value>Last import</value></data>
+  <data name="LastImportNone" xml:space="preserve"><value>No imports yet.</value></data>
+  <data name="LastImportFormat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="ViewHistory" xml:space="preserve"><value>View history</value></data>
+  <data name="PreviewsHeader" xml:space="preserve"><value>Previews</value></data>
+  <data name="PreviewsDescription" xml:space="preserve"><value>Small previews for the review screen are kept here, so each is made only once. Clearing them is safe; they&apos;re made again when needed.</value></data>
+  <data name="PreviewsSizeFormat" xml:space="preserve"><value>{0:N0} previews · {1}</value></data>
+  <data name="UseDefaultFolder" xml:space="preserve"><value>Use default</value></data>
+  <data name="ClearPreviews" xml:space="preserve"><value>Clear previews</value></data>
 </root>
