@@ -176,10 +176,10 @@ All app data lives under `%LOCALAPPDATA%\AppleDrive\`:
 | Path | Contents |
 |---|---|
 | `settings.json` | User preferences (written atomically) |
-| *(installed from the MSIX)* | The same files, in `%LOCALAPPDATA%\Packages\PrasunDangol.AppleDrive_…\LocalState\AppleDrive` instead |
 | `Thumbnails\` | Preview cache (256 px JPEGs, safe to delete; they are made again when needed) |
 | `media-index.db` | Index of destination media (see [Destination scanning](#destination-scanning-and-the-media-index)) |
 | `Logs\apple-drive-YYYYMMDD.log` | Diagnostic logs, 14 days retained. Settings → *Open logs folder*. |
+| *(installed from the MSIX)* | The same files, in `%LOCALAPPDATA%\Packages\PrasunDangol.AppleDrive_…\LocalState\AppleDrive` instead |
 
 Logs record events (connection, scan counts, errors) but never image data.
 
