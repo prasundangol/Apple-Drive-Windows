@@ -50,6 +50,7 @@ public sealed partial class TransferViewModel : ObservableObject
         _settings = settings;
         _shell = shell;
         session.Changed += (_, _) => dispatcher.Post(StartCommand.NotifyCanExecuteChanged);
+        session.SelectionChanged += (_, _) => dispatcher.Post(StartCommand.NotifyCanExecuteChanged);
     }
 
     [ObservableProperty]
@@ -155,7 +156,7 @@ public sealed partial class TransferViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(RetryCommand))]
     public partial bool CanRetryItems { get; private set; }
 
-    private bool CanStart() => IsIdle && _session.Plan is { HasWork: true };
+    private bool CanStart() => IsIdle && _session.SelectedItems.Any(item => item.Status is AssetStatus.New or AssetStatus.PossibleDuplicate);
 
     [RelayCommand(CanExecute = nameof(CanStart))]
     private async Task StartAsync()
@@ -166,18 +167,23 @@ public sealed partial class TransferViewModel : ObservableObject
             return;
         }
 
+        // What the user left selected (everything, unless they changed it on the review screen).
+        var selected = _session.SelectedItems;
+        var newItems = selected.Where(item => item.Status == AssetStatus.New).ToList();
+        var possible = selected.Where(item => item.Status == AssetStatus.PossibleDuplicate).ToList();
+
         var settings = _settings.Current;
         List<KeyValuePair<string, string>> details =
         [
-            new(Strings.ConfirmNewLabel, Count(plan.NewCount)),
+            new(Strings.ConfirmNewLabel, Count(newItems.Count)),
             new(Strings.ConfirmDuplicatesLabel, Count(plan.ExactDuplicateCount)),
         ];
-        if (plan.PossibleDuplicateCount > 0)
+        if (possible.Count > 0)
         {
-            details.Add(new(Strings.ConfirmPossibleDuplicatesLabel, Count(plan.PossibleDuplicateCount)));
+            details.Add(new(Strings.ConfirmPossibleDuplicatesLabel, Count(possible.Count)));
         }
 
-        details.Add(new(Strings.ConfirmSizeLabel, ByteSize.Format(plan.TransferBytes)));
+        details.Add(new(Strings.ConfirmSizeLabel, ByteSize.Format(newItems.Sum(item => item.TransferBytes))));
         details.Add(new(Strings.DestinationLabel, plan.DestinationRoot));
         details.Add(new(Strings.ConfirmOrganizationLabel, OrganizationText(settings.Organization)));
 
@@ -188,8 +194,8 @@ public sealed partial class TransferViewModel : ObservableObject
             Strings.ConfirmFootnote,
             Strings.StartTransfer,
             Strings.Cancel,
-            plan.PossibleDuplicateCount > 0
-                ? Strings.Format(Strings.ConfirmIncludePossibleDuplicatesFormat, plan.PossibleDuplicateCount, ByteSize.Format(plan.PossibleDuplicateBytes))
+            possible.Count > 0
+                ? Strings.Format(Strings.ConfirmIncludePossibleDuplicatesFormat, possible.Count, ByteSize.Format(possible.Sum(item => item.TransferBytes)))
                 : null,
             OptionChecked: true));
         if (!answer.Confirmed || !IsIdle)
@@ -198,12 +204,12 @@ public sealed partial class TransferViewModel : ObservableObject
         }
 
         await RunAsync(new TransferRequest(
-            plan.Items,
+            selected,
             plan.DestinationRoot,
             settings.Organization,
             settings.SkipExactDuplicates,
             _session.LastPhoneScan?.Device.FriendlyName,
-            IncludePossibleDuplicates: plan.PossibleDuplicateCount == 0 || answer.OptionChecked));
+            IncludePossibleDuplicates: possible.Count == 0 || answer.OptionChecked));
     }
 
     private bool CanCancel() => IsTransferring && !IsCancelling;

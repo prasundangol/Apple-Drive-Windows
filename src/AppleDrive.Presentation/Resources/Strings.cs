@@ -295,6 +295,96 @@ public static class Strings
 
     public static string PossibleDuplicatesSkippedLabel => Get();
 
+    public static string ReviewFiles => Get();
+
+    public static string ReviewTitle => Get();
+
+    public static string Back => Get();
+
+    public static string ReviewNoPlan => Get();
+
+    public static string NoItemsMatch => Get();
+
+    public static string SearchPlaceholder => Get();
+
+    public static string FilterStatusAll => Get();
+
+    public static string FilterStatusNew => Get();
+
+    public static string FilterStatusPossible => Get();
+
+    public static string FilterStatusExisting => Get();
+
+    public static string FilterTypeAll => Get();
+
+    public static string FilterTypePhotos => Get();
+
+    public static string FilterTypeVideos => Get();
+
+    public static string AllYears => Get();
+
+    public static string SortNewest => Get();
+
+    public static string SortOldest => Get();
+
+    public static string SortName => Get();
+
+    public static string SortSize => Get();
+
+    public static string SortStatus => Get();
+
+    public static string FilterStatusLabel => Get();
+
+    public static string FilterTypeLabel => Get();
+
+    public static string FilterYearLabel => Get();
+
+    public static string SortLabel => Get();
+
+    public static string SelectAll => Get();
+
+    public static string SelectNone => Get();
+
+    public static string SelectOnlyNew => Get();
+
+    public static string IncludePossibleDuplicatesToggle => Get();
+
+    public static string SelectedFormat => Get();
+
+    public static string ShownFormat => Get();
+
+    public static string SelectionOnPlanFormat => Get();
+
+    public static string KindPhoto => Get();
+
+    public static string KindVideo => Get();
+
+    public static string KindLivePhoto => Get();
+
+    public static string DateUnknown => Get();
+
+    public static string StatusNew => Get();
+
+    public static string StatusPossibleDuplicate => Get();
+
+    public static string StatusAlreadyInDestination => Get();
+
+    public static string ExistingFormat => Get();
+
+    public static string LooksLikeFormat => Get();
+
+    public static string SimilarityVeryHigh => Get();
+
+    public static string SimilarityHigh => Get();
+
+    public static string ItemCopy => Get();
+
+    public static string ItemKeepBoth => Get();
+
+    public static string OnIphoneLabel => Get();
+
+    public static string InDestinationLabel => Get();
+
     /// <summary>Formats a resource string with the current culture.</summary>
     public static string Format(string format, params object?[] arguments) =>
         string.Format(CultureInfo.CurrentCulture, format, arguments);

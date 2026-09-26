@@ -144,4 +144,49 @@
   <data name="VisuallyUncheckedFormat" xml:space="preserve"><value>{0:N0} photos couldn&apos;t be compared visually (their format can&apos;t be decoded on this PC), so they&apos;re treated as new.</value></data>
   <data name="PossibleDuplicatesCopiedLabel" xml:space="preserve"><value>Possible duplicates copied</value></data>
   <data name="PossibleDuplicatesSkippedLabel" xml:space="preserve"><value>Possible duplicates not copied</value></data>
+  <data name="ReviewFiles" xml:space="preserve"><value>Review files</value></data>
+  <data name="ReviewTitle" xml:space="preserve"><value>Review files</value></data>
+  <data name="Back" xml:space="preserve"><value>Back</value></data>
+  <data name="ReviewNoPlan" xml:space="preserve"><value>Check for new photos on the Import page first.</value></data>
+  <data name="NoItemsMatch" xml:space="preserve"><value>No items match these filters.</value></data>
+  <data name="SearchPlaceholder" xml:space="preserve"><value>Search by file name</value></data>
+  <data name="FilterStatusAll" xml:space="preserve"><value>All items</value></data>
+  <data name="FilterStatusNew" xml:space="preserve"><value>New</value></data>
+  <data name="FilterStatusPossible" xml:space="preserve"><value>Possible duplicates</value></data>
+  <data name="FilterStatusExisting" xml:space="preserve"><value>Already in destination</value></data>
+  <data name="FilterTypeAll" xml:space="preserve"><value>Photos and videos</value></data>
+  <data name="FilterTypePhotos" xml:space="preserve"><value>Photos</value></data>
+  <data name="FilterTypeVideos" xml:space="preserve"><value>Videos</value></data>
+  <data name="AllYears" xml:space="preserve"><value>All years</value></data>
+  <data name="SortNewest" xml:space="preserve"><value>Newest first</value></data>
+  <data name="SortOldest" xml:space="preserve"><value>Oldest first</value></data>
+  <data name="SortName" xml:space="preserve"><value>Name</value></data>
+  <data name="SortSize" xml:space="preserve"><value>Largest first</value></data>
+  <data name="SortStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="FilterStatusLabel" xml:space="preserve"><value>Show</value></data>
+  <data name="FilterTypeLabel" xml:space="preserve"><value>Type</value></data>
+  <data name="FilterYearLabel" xml:space="preserve"><value>Year</value></data>
+  <data name="SortLabel" xml:space="preserve"><value>Sort by</value></data>
+  <data name="SelectAll" xml:space="preserve"><value>Select all</value></data>
+  <data name="SelectNone" xml:space="preserve"><value>Select none</value></data>
+  <data name="SelectOnlyNew" xml:space="preserve"><value>Only new</value></data>
+  <data name="IncludePossibleDuplicatesToggle" xml:space="preserve"><value>Copy possible duplicates</value></data>
+  <data name="SelectedFormat" xml:space="preserve"><value>{0:N0} of {1:N0} selected · {2}</value></data>
+  <data name="ShownFormat" xml:space="preserve"><value>Showing {0:N0} of {1:N0}</value></data>
+  <data name="SelectionOnPlanFormat" xml:space="preserve"><value>{0:N0} of {1:N0} items selected to copy.</value></data>
+  <data name="KindPhoto" xml:space="preserve"><value>Photo</value></data>
+  <data name="KindVideo" xml:space="preserve"><value>Video</value></data>
+  <data name="KindLivePhoto" xml:space="preserve"><value>Live Photo</value></data>
+  <data name="DateUnknown" xml:space="preserve"><value>Date unknown</value></data>
+  <data name="StatusNew" xml:space="preserve"><value>New</value></data>
+  <data name="StatusPossibleDuplicate" xml:space="preserve"><value>Possible duplicate</value></data>
+  <data name="StatusAlreadyInDestination" xml:space="preserve"><value>Already in destination</value></data>
+  <data name="ExistingFormat" xml:space="preserve"><value>Existing: {0}</value></data>
+  <data name="LooksLikeFormat" xml:space="preserve"><value>Looks like: {0} (similarity {1})</value></data>
+  <data name="SimilarityVeryHigh" xml:space="preserve"><value>very high</value></data>
+  <data name="SimilarityHigh" xml:space="preserve"><value>high</value></data>
+  <data name="ItemCopy" xml:space="preserve"><value>Copy</value></data>
+  <data name="ItemKeepBoth" xml:space="preserve"><value>Keep both</value></data>
+  <data name="OnIphoneLabel" xml:space="preserve"><value>On iPhone</value></data>
+  <data name="InDestinationLabel" xml:space="preserve"><value>In destination</value></data>
 </root>

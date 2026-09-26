@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using AppleDrive.Application.Interfaces;
 using AppleDrive.Application.Services;
+using AppleDrive.Application.Settings;
 using AppleDrive.Domain.Entities;
 using AppleDrive.Domain.Enums;
 using AppleDrive.Domain.Media;
@@ -279,6 +281,206 @@ internal static class PipelineChecks
                 File.Delete(file);
             }
         }
+    }
+
+    /// <summary>
+    /// Compares each image's EXIF orientation with the orientation in which its device thumbnail
+    /// matches the upright photo, re-reads every file to confirm the content is stable, and reports
+    /// what the device offers as video thumbnails.
+    /// </summary>
+    public static async Task<int> OrientationCheckAsync(WpdPhotoSource source, IReadOnlyList<PhotoAsset> assets, int count)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"== Orientation check: {count} images ==");
+        var hasher = new WicPerceptualHashService(new ConsoleLogger<WicPerceptualHashService>());
+        var sha = new Sha256HashService();
+        var images = assets.Where(a => a.MediaType == MediaType.Image).Take(count).ToList();
+        var pairs = new Dictionary<(int? Exif, int Best), int>();
+        var firstHashes = new Dictionary<string, byte[]>();
+        foreach (var asset in images)
+        {
+            var thumbOpen = await source.OpenThumbnailAsync(asset, CancellationToken.None);
+            IReadOnlyList<ulong>? thumb = null;
+            if (thumbOpen.IsSuccess)
+            {
+                await using var stream = thumbOpen.Value;
+                thumb = await hasher.ComputeAllOrientationsAsync(stream, CancellationToken.None);
+            }
+
+            var fullOpen = await source.OpenAssetAsync(asset, CancellationToken.None);
+            if (!fullOpen.IsSuccess)
+            {
+                continue;
+            }
+
+            byte[] content;
+            await using (var stream = fullOpen.Value)
+            {
+                using var buffer = new MemoryStream();
+                await stream.CopyToAsync(buffer);
+                content = buffer.ToArray();
+            }
+
+            firstHashes[asset.Id] = SHA256.HashData(content);
+            // Never close a device stream early (it upsets the phone): the orientation comes from the full read.
+            var exif = CaptureDateReader.ReadOrientation(new MemoryStream(content));
+            var full = await hasher.ComputeAsync(new MemoryStream(content), CancellationToken.None);
+            if (thumb is null || full is null)
+            {
+                continue;
+            }
+
+            var distances = thumb.Select(hash => ImageFingerprint.Distance(hash, full.Hash)).ToList();
+            var best = distances.IndexOf(distances.Min());
+            var key = (exif, distances.Min() <= 10 ? best : -1);
+            pairs[key] = pairs.GetValueOrDefault(key) + 1;
+        }
+
+        Console.WriteLine("EXIF orientation → best thumbnail orientation index (rotation×2 + mirrored; -1 = no match): count");
+        foreach (var ((exifValue, best), n) in pairs.OrderBy(p => p.Key.Exif).ThenBy(p => p.Key.Best))
+        {
+            Console.WriteLine($"  {exifValue?.ToString() ?? "none"} → {best}: {n}");
+        }
+
+
+        var mismatches = 0;
+        foreach (var asset in images.Where(a => firstHashes.ContainsKey(a.Id)))
+        {
+            var again = await HashAsync(source, sha, asset);
+            if (!again.Matches(firstHashes[asset.Id]))
+            {
+                mismatches++;
+                Console.WriteLine($"  CONTENT CHANGED on re-read: {asset.FileName}");
+            }
+        }
+
+        Console.WriteLine($"Re-read after early closes: {mismatches} content mismatches of {firstHashes.Count}");
+
+        Console.WriteLine("Video thumbnails:");
+        foreach (var video in assets.Where(a => a.MediaType == MediaType.Video).Take(8))
+        {
+            var open = await source.OpenThumbnailAsync(video, CancellationToken.None);
+            if (!open.IsSuccess)
+            {
+                Console.WriteLine($"  {video.FileName}: none ({open.Error!.Kind})");
+                continue;
+            }
+
+            await using var stream = open.Value;
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            buffer.Position = 0;
+            var fingerprint = await hasher.ComputeAsync(buffer, CancellationToken.None);
+            Console.WriteLine($"  {video.FileName}: {buffer.Length:N0} B, {(fingerprint is null ? "not decodable" : $"{fingerprint.Width}x{fingerprint.Height}")}");
+        }
+
+        return mismatches == 0 ? 0 : 10;
+    }
+
+    /// <summary>
+    /// What happens to the next read after a device stream is closed before its end: repeated
+    /// "read the first 64 KB of one file, then read another file in full" cycles.
+    /// </summary>
+    public static async Task<int> EarlyCloseCheckAsync(WpdPhotoSource source, DeviceInfo device, IReadOnlyList<PhotoAsset> assets, bool drain)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"== Early-close check ({(drain ? "reading the rest before closing" : "closing after 64 KB")}) ==");
+        var sha = new Sha256HashService();
+        var files = assets.Where(a => a.ReportedSize is > 300_000 and < 5_000_000).Take(12).ToList();
+        var reference = new Dictionary<string, HashResult>();
+        foreach (var asset in files)
+        {
+            reference[asset.Id] = await HashAsync(source, sha, asset);
+        }
+
+        var failures = 0;
+        for (var i = 0; i + 1 < files.Count; i += 2)
+        {
+            var open = await source.OpenAssetAsync(files[i], CancellationToken.None);
+            if (!open.IsSuccess)
+            {
+                Console.WriteLine($"  open {files[i].FileName}: {open.Error}");
+                failures++;
+                continue;
+            }
+
+            await using (var stream = open.Value)
+            {
+                var buffer = new byte[64 * 1024];
+                await stream.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false);
+                if (drain)
+                {
+                    await stream.CopyToAsync(Stream.Null);
+                }
+            }
+
+            try
+            {
+                var next = await HashAsync(source, sha, files[i + 1]);
+                var same = next.Matches(reference[files[i + 1].Id].Sha256);
+                Console.WriteLine($"  after closing {files[i].FileName}: {files[i + 1].FileName} {(same ? "read correctly" : "WRONG CONTENT")}");
+                failures += same ? 0 : 1;
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or IOException)
+            {
+                Console.WriteLine($"  after closing {files[i].FileName}: {files[i + 1].FileName} failed: {exception.Message}");
+                failures++;
+                await source.ConnectAsync(device, CancellationToken.None);
+            }
+        }
+
+        Console.WriteLine($"Failures: {failures}");
+        return failures == 0 ? 0 : 11;
+    }
+
+    /// <summary>Makes previews of the named phone files with the real thumbnail service, into a throwaway cache.</summary>
+    public static async Task<int> PreviewCheckAsync(WpdPhotoSource source, IReadOnlyList<PhotoAsset> assets, IReadOnlyList<string> names)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"== Preview check: {string.Join(", ", names)} ==");
+        var cache = Path.Combine(Path.GetTempPath(), $"appledrive-previews-{Guid.NewGuid():N}");
+        var settings = new ProbeSettings(cache);
+        using var service = new ThumbnailService(source, settings, new AppPaths(cache), new ConsoleLogger<ThumbnailService>());
+        try
+        {
+            foreach (var name in names)
+            {
+                foreach (var asset in assets.Where(a => string.Equals(a.FileName, name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var watch = Stopwatch.StartNew();
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    try
+                    {
+                        var preview = await service.GetPhoneThumbnailAsync(asset, timeout.Token);
+                        Console.WriteLine($"  {asset.SourcePath}: {(preview is null ? "no preview" : $"{new FileInfo(preview).Length:N0} B")} in {watch.ElapsedMilliseconds} ms");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Console.WriteLine($"  {asset.SourcePath}: TIMED OUT after {watch.ElapsedMilliseconds} ms");
+                        return 12;
+                    }
+                }
+            }
+
+            return 0;
+        }
+        finally
+        {
+            Directory.Delete(cache, recursive: true);
+        }
+    }
+
+    private sealed class ProbeSettings(string cache) : ISettingsService
+    {
+        public AppSettings Current { get; } = new() { ThumbnailCacheFolder = cache };
+
+        public event EventHandler<AppSettings>? SettingsChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public Task UpdateAsync(Func<AppSettings, AppSettings> update, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private static async Task<HashResult> HashAsync(IPhonePhotoSource source, IHashService hashes, PhotoAsset asset)

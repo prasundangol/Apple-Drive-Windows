@@ -35,19 +35,12 @@ public sealed class CaptureDateReader : ICaptureDateReader
     {
         try
         {
-            stream.Position = 0;
-            Span<byte> header = stackalloc byte[12];
-            if (stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false) < header.Length)
+            return Classify(stream) switch
             {
-                return null;
-            }
-
-            if (header[0] == 0xFF && header[1] == 0xD8)
-            {
-                return ReadJpeg(stream);
-            }
-
-            return header[4..8].SequenceEqual("ftyp"u8) ? ReadIsoMedia(stream) : null;
+                Format.Jpeg => ReadJpegExif(stream) is { } tiff ? Exif.ReadCaptureDate(tiff) : null,
+                Format.IsoMedia => ReadIsoMedia(stream),
+                _ => null,
+            };
         }
         catch (Exception exception) when (exception is EndOfStreamException or ArgumentException or OverflowException or InvalidDataException)
         {
@@ -55,9 +48,59 @@ public sealed class CaptureDateReader : ICaptureDateReader
         }
     }
 
+    /// <summary>
+    /// The EXIF orientation (1–8) of a JPEG or HEIC image, or <c>null</c> when it has none. Works on
+    /// the first part of a file as well as on a whole one: the metadata of camera images is at the
+    /// start, so a prefix of a few hundred kilobytes is normally enough.
+    /// </summary>
+    internal static int? ReadOrientation(Stream stream)
+    {
+        try
+        {
+            var tiff = Classify(stream) switch
+            {
+                Format.Jpeg => ReadJpegExif(stream),
+                Format.IsoMedia => Boxes(stream, 0, stream.Length).FirstOrDefault(box => box.Type == "meta") is { Type: not null } meta
+                    ? ReadHeifExif(stream, meta)
+                    : null,
+                _ => null,
+            };
+            return tiff is null ? null : Exif.ReadOrientation(tiff);
+        }
+        catch (Exception exception) when (exception is EndOfStreamException or ArgumentException or OverflowException or InvalidDataException)
+        {
+            return null;
+        }
+    }
+
+    private enum Format
+    {
+        Unknown,
+        Jpeg,
+        IsoMedia,
+    }
+
+    private static Format Classify(Stream stream)
+    {
+        stream.Position = 0;
+        Span<byte> header = stackalloc byte[12];
+        if (stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false) < header.Length)
+        {
+            return Format.Unknown;
+        }
+
+        if (header[0] == 0xFF && header[1] == 0xD8)
+        {
+            return Format.Jpeg;
+        }
+
+        return header[4..8].SequenceEqual("ftyp"u8) ? Format.IsoMedia : Format.Unknown;
+    }
+
     // ------------------------------------------------------------------ JPEG
 
-    private static CaptureDate? ReadJpeg(Stream stream)
+    /// <summary>The TIFF block of a JPEG's EXIF APP1 segment, or <c>null</c>.</summary>
+    private static byte[]? ReadJpegExif(Stream stream)
     {
         stream.Position = 2;
         for (var segment = 0; segment < 64; segment++)
@@ -80,7 +123,7 @@ public sealed class CaptureDateReader : ICaptureDateReader
                 var data = ReadBytes(stream, dataLength);
                 if (data.AsSpan(0, 6).SequenceEqual("Exif\0\0"u8))
                 {
-                    return Exif.ReadCaptureDate(data.AsSpan(6));
+                    return data[6..];
                 }
             }
             else
@@ -121,13 +164,14 @@ public sealed class CaptureDateReader : ICaptureDateReader
 
         if (topLevel.FirstOrDefault(box => box.Type == "meta") is { Type: not null } meta)
         {
-            return ReadHeifExif(stream, meta);
+            return ReadHeifExif(stream, meta) is { } tiff ? Exif.ReadCaptureDate(tiff) : null;
         }
 
         return null;
     }
 
-    private static CaptureDate? ReadHeifExif(Stream stream, Box meta)
+    /// <summary>The TIFF block of a HEIF image's EXIF item, or <c>null</c>.</summary>
+    private static byte[]? ReadHeifExif(Stream stream, Box meta)
     {
         // 'meta' is a full box: 4 bytes of version and flags before its children.
         var children = Boxes(stream, meta.ContentStart + 4, meta.End).ToList();
@@ -170,7 +214,7 @@ public sealed class CaptureDateReader : ICaptureDateReader
         }
 
         var tiffOffset = 4 + (long)BinaryPrimitives.ReadUInt32BigEndian(exif);
-        return tiffOffset < exif.Length ? Exif.ReadCaptureDate(exif[(int)tiffOffset..]) : null;
+        return tiffOffset < exif.Length ? exif[(int)tiffOffset..].ToArray() : null;
     }
 
     /// <summary>Item id of the 'Exif' entry in an item information box.</summary>

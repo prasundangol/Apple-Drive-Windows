@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ExactDuplicateDetector>();
         services.AddSingleton<IPerceptualHashService, WicPerceptualHashService>();
         services.AddSingleton<VisualDuplicateDetector>();
+        services.AddSingleton<IThumbnailService, ThumbnailService>();
         services.AddSingleton<ImportAnalysisService>();
         services.AddSingleton<ImportSession>();
 

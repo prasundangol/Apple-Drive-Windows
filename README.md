@@ -4,7 +4,7 @@ Apple Drive is a Windows desktop app that copies photos and videos from an iPhon
 
 Apple Drive never deletes or changes anything on your iPhone, never overwrites files on your PC, and never sends your photos anywhere. Everything runs locally and offline.
 
-> **Status:** early development. Detecting an iPhone, reading its media, destination indexing, exact and visually-similar duplicate detection, and verified transfers with crash recovery work. Thumbnails and the media review screen are next. See [Roadmap](#roadmap).
+> **Status:** early development. Detecting an iPhone, reading its media, destination indexing, exact and visually-similar duplicate detection, and verified transfers with crash recovery, and a review screen with previews work. History, polish and packaging are next. See [Roadmap](#roadmap).
 
 ---
 
@@ -62,6 +62,9 @@ More checks:
 | `--reconnect-check <n>` | Reads *n* files, reconnects, and reads them again by the same object id, confirming the content is identical. The transfer engine relies on this when it re-reads a suspicious file. |
 | `--thumbnails <n>` | Compares the visual fingerprint of each image's phone thumbnail (in all 8 orientations) with that of the full file, and reports the distances and timing. |
 | `--visual-check <folder>` | Runs the visual duplicate check with every phone image treated as new, against a folder that holds copies of them (use `--transfer` first). Each image should find its own copy; matches to other files are listed. |
+| `--orientation-check <n>` | For *n* images, compares the EXIF orientation with the orientation in which the phone's thumbnail matches the upright photo, then re-reads every file to confirm the content is stable, and reports the video thumbnails. |
+| `--early-close-check` | Reads 64 KB of a file, closes it, then reads another file in full, several times, and checks that the content is correct. Without the read-to-end safeguard, this fails on a real iPhone. |
+| `--preview <names>` | Makes previews of the named phone files with the real preview service, into a throwaway cache, and reports size and time. |
 | `--transfer <folder> [--organize flat\|month\|day] [--limit <items>]` | Runs the real duplicate check and transfer engine into `<folder>`, with a throwaway index database (the app's own index is untouched), then reports what was copied, the speed, and any leftovers. |
 
 ---
@@ -99,6 +102,8 @@ Alternatives considered and rejected:
 - **Folder names** on the phone vary between iOS versions (`100APPLE`, `202409__`, `202409_a`, …). Apple Drive enumerates recursively and doesn't depend on them.
 - **Metadata:** many items report no capture date over USB, and none report dimensions. Those details are read from the file itself after copying.
 - **One file at a time:** the iPhone driver allows one open file stream per device. Apple Drive reads from the phone strictly one file at a time (see [Transfer safety](#transfer-safety)).
+- **Files are always read to the end:** closing a file stream before its end leaves the iPhone in a bad state. Testing on a real iPhone showed that the next file fails to open (`0x8007001E`), then fails again even after reconnecting (`0x80042007`), and that a later read once returned another file's content. A stream that is closed early (a cancelled copy, a preview that scrolled away) therefore reads and discards the rest of the file first. With that in place, the same test gave no failures in three runs. Cancelling a transfer during a large video can take a few seconds longer because of this.
+- **Thumbnails on the phone** are stored as the sensor saw them: portrait photos sideways, front-camera shots mirrored, and without an orientation tag. For some saved or edited JPEGs they show a different version of the picture. See [Reviewing files](#reviewing-files) for how previews handle this.
 
 ---
 
@@ -146,6 +151,7 @@ All app data lives under `%LOCALAPPDATA%\AppleDrive\`:
 | Path | Contents |
 |---|---|
 | `settings.json` | User preferences (written atomically) |
+| `Thumbnails\` | Preview cache (256 px JPEGs, safe to delete; they are made again when needed) |
 | `media-index.db` | Index of destination media (see [Destination scanning](#destination-scanning-and-the-media-index)) |
 | `Logs\apple-drive-YYYYMMDD.log` | Diagnostic logs, 14 days retained. Settings → *Open logs folder*. |
 
@@ -238,6 +244,27 @@ In the confirmation, **Also copy the N possible duplicates, keeping both version
 
 Tested on a real iPhone (441 items, 477 files) against a folder of 12 files copied from it, one renamed and one with a single byte changed. The check read only the 12 phone files that shared a size with a destination file and finished in under a second. The renamed copy was matched and the altered file was classified as new.
 
+## Reviewing files
+
+**Review files** on the Import page opens a grid of everything on the iPhone with a preview, name, type, size, date and status. For duplicates, the file already in the destination is shown next to it, so possible duplicates can be compared side by side.
+
+- **Choose what to copy:** new items and possible duplicates are ticked; untick anything to leave it on the phone. For a possible duplicate the box reads **Keep both**. Exact duplicates are never copied again, so they have no box. **Select all** and **Select none** act on what is shown, **Only new** leaves out every possible duplicate, and **Copy possible duplicates** switches them all on or off. The confirmation and the transfer use this selection.
+- **Filter** by status (new, possible duplicates, already in destination), type (photos, videos) and year; **search** by file name; **sort** by date (newest or oldest first), name, size or status.
+- The date comes from the phone, or the month of its camera-roll folder when the phone reports none. The date read from the file itself is known only after copying.
+- The grid is virtualized, so only visible items exist. Their previews load as they scroll into view, and loading stops when they scroll away.
+
+### Previews
+
+Previews are 256 px JPEGs, generated asynchronously on first display and cached on disk: in `%LOCALAPPDATA%\AppleDrive\Thumbnails`, or the folder chosen in Settings. Each is decoded only once, and requests for the same preview share one generation.
+
+| Item | Preview from |
+|---|---|
+| iPhone HEIC and JPEG photos | The file itself, decoded upright (EXIF orientation applied). The phone's own thumbnail isn't used because it is unrotated, sometimes mirrored, and for some JPEGs shows another version. Reading a 1–3 MB photo takes about half a second. |
+| iPhone PNG, WebP and GIF images, and videos | The small thumbnail the phone keeps (4–10 KB); these are never rotated. A video is never read just for a preview. |
+| Destination files, photos and videos | The Windows shell thumbnail, so Windows' own thumbnail cache is reused. |
+
+Phone reads for previews are one at a time, like every phone read, and always to the end of the file.
+
 ## Transferring
 
 After **Check for new photos**, **Start transfer** shows a confirmation with the number of new items, the duplicates that will be skipped, the total size, the destination and the folder layout. Nothing starts until you confirm. While it runs, the page shows items done, the current file, bytes copied, speed, and the time remaining (only once the speed has settled). It also shows running counts of files transferred, skipped and failed. **Cancel** is always available.
@@ -313,7 +340,7 @@ Tested against a simulated iPhone for: successful copies, read failures and retr
 6. ✅ Transfer engine: verified copies, folder organization by capture date, conflict-free names, progress, cancel, retry
 7. ✅ Crash recovery, faster re-check from transfer history, single instance
 8. ✅ Perceptual hashing: possible duplicates, shown and never skipped silently
-9. Thumbnails and media review UI
+9. ✅ Thumbnails and media review screen: previews, per-item Keep both / Skip, filters, sorting, search
 10. History, filtering, accessibility polish, MSIX packaging
 
 ---

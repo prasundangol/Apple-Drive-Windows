@@ -176,11 +176,19 @@
                             TextWrapping="WrapWholeWords" />
                     </StackPanel>
 
-                    <Button
-                        Command="{x:Bind ViewModel.Transfer.StartCommand}"
-                        Content="{x:Bind res:Strings.StartTransfer}"
-                        Style="{StaticResource AccentButtonStyle}"
-                        Visibility="{x:Bind IsFalse(ViewModel.HasNothingNew), Mode=OneWay}" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind ViewModel.SelectionText, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.HasSelectionText, Mode=OneWay}" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            Command="{x:Bind ViewModel.Transfer.StartCommand}"
+                            Content="{x:Bind res:Strings.StartTransfer}"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Visibility="{x:Bind IsFalse(ViewModel.HasNothingNew), Mode=OneWay}" />
+                        <Button Click="OnReviewFiles" Content="{x:Bind res:Strings.ReviewFiles}" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

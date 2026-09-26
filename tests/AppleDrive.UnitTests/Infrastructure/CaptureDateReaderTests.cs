@@ -127,6 +127,42 @@ public sealed class CaptureDateReaderTests
         Assert.Equal(new DateTimeOffset(2024, 12, 31, 22, 0, 0, TimeSpan.FromMinutes(offsetMinutes)), date!.Value);
     }
 
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(6, false)]
+    [InlineData(8, true)]
+    [InlineData(3, true)]
+    public void Reads_the_orientation_of_a_jpeg(int orientation, bool bigEndian)
+    {
+        var jpeg = MediaFixtures.Jpeg(MediaFixtures.Exif("2024:01:01 10:00:00", bigEndian: bigEndian, orientation: (ushort)orientation));
+
+        Assert.Equal(orientation, CaptureDateReader.ReadOrientation(new MemoryStream(jpeg)));
+    }
+
+    [Fact]
+    public void Reads_the_orientation_of_a_heic()
+    {
+        var heic = MediaFixtures.Heic(MediaFixtures.Exif("2024:01:01 10:00:00", orientation: 6));
+
+        Assert.Equal(6, CaptureDateReader.ReadOrientation(new MemoryStream(heic)));
+    }
+
+    [Fact]
+    public void Images_without_an_orientation_tag_have_none()
+    {
+        Assert.Null(CaptureDateReader.ReadOrientation(new MemoryStream(MediaFixtures.Jpeg(MediaFixtures.Exif("2024:01:01 10:00:00")))));
+        Assert.Null(CaptureDateReader.ReadOrientation(new MemoryStream(MediaFixtures.Jpeg(null))));
+        Assert.Null(CaptureDateReader.ReadOrientation(new MemoryStream(MediaFixtures.QuickTime(DateTime.UtcNow))));
+    }
+
+    [Fact]
+    public void Orientation_tag_does_not_disturb_the_capture_date()
+    {
+        var date = Read(MediaFixtures.Jpeg(MediaFixtures.Exif("2024:03:15 09:30:00", "+05:45", orientation: 6)));
+
+        Assert.Equal(new DateTimeOffset(2024, 3, 15, 9, 30, 0, Nepal), date!.Value);
+    }
+
     [Fact]
     public async Task Reads_from_a_file_on_disk()
     {

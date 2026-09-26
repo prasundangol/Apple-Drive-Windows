@@ -16,6 +16,8 @@ internal static class Exif
     private const ushort OffsetTimeOriginal = 0x9011;
     private const ushort OffsetTimeDigitized = 0x9012;
     private const ushort AsciiType = 2;
+    private const ushort ShortType = 3;
+    private const ushort OrientationTag = 0x0112;
 
     /// <summary>
     /// When the photo was taken: <c>DateTimeOriginal</c>, else <c>DateTimeDigitized</c>, else the
@@ -23,27 +25,7 @@ internal static class Exif
     /// </summary>
     public static CaptureDate? ReadCaptureDate(ReadOnlySpan<byte> tiff)
     {
-        if (tiff.Length < 8)
-        {
-            return null;
-        }
-
-        bool littleEndian;
-        if (tiff[0] == 'I' && tiff[1] == 'I')
-        {
-            littleEndian = true;
-        }
-        else if (tiff[0] == 'M' && tiff[1] == 'M')
-        {
-            littleEndian = false;
-        }
-        else
-        {
-            return null;
-        }
-
-        var reader = new TiffReader(tiff, littleEndian);
-        if (reader.UInt16(2) != 42)
+        if (!TryOpen(tiff, out var reader))
         {
             return null;
         }
@@ -54,6 +36,28 @@ internal static class Exif
         return Combine(reader.Ascii(exif, DateTimeOriginal), reader.Ascii(exif, OffsetTimeOriginal))
             ?? Combine(reader.Ascii(exif, DateTimeDigitized), reader.Ascii(exif, OffsetTimeDigitized))
             ?? Combine(reader.Ascii(ifd0, DateTime), reader.Ascii(exif, OffsetTime));
+    }
+
+    /// <summary>
+    /// The <c>Orientation</c> tag (1–8): how the stored pixels must be turned and mirrored to be
+    /// upright. 1 is upright, 3 upside down, 6 needs a quarter turn clockwise, 8 anticlockwise; 2, 4,
+    /// 5 and 7 are the mirrored forms. <c>null</c> when absent.
+    /// </summary>
+    public static int? ReadOrientation(ReadOnlySpan<byte> tiff)
+    {
+        if (!TryOpen(tiff, out var reader))
+        {
+            return null;
+        }
+
+        var ifd0 = reader.ReadIfd(reader.UInt32(4));
+        if (!ifd0.TryGetValue(OrientationTag, out var entry) || entry.Type != ShortType || entry.Count < 1)
+        {
+            return null;
+        }
+
+        var value = reader.UInt16(entry.ValueOffset);
+        return value is >= 1 and <= 8 ? value : null;
     }
 
     /// <summary>EXIF time <c>2026:09:25 14:03:11</c> plus an optional offset <c>+05:45</c>.</summary>
@@ -88,6 +92,18 @@ internal static class Exif
 
         offset = new TimeSpan(hours, minutes, 0) * (text[0] == '-' ? -1 : 1);
         return true;
+    }
+
+    private static bool TryOpen(ReadOnlySpan<byte> tiff, out TiffReader reader)
+    {
+        reader = default;
+        if (tiff.Length < 8 || tiff[0] != tiff[1] || tiff[0] is not ((byte)'I' or (byte)'M'))
+        {
+            return false;
+        }
+
+        reader = new TiffReader(tiff, littleEndian: tiff[0] == 'I');
+        return reader.UInt16(2) == 42;
     }
 
     private readonly record struct Entry(ushort Type, uint Count, int ValueOffset);

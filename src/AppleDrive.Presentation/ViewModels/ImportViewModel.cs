@@ -1,5 +1,6 @@
 using AppleDrive.Application.Services;
 using AppleDrive.Application.Settings;
+using AppleDrive.Domain.Enums;
 using AppleDrive.Domain.Results;
 using AppleDrive.Presentation.Formatting;
 using AppleDrive.Presentation.Resources;
@@ -34,6 +35,7 @@ public sealed partial class ImportViewModel : ObservableObject
         device.ConnectionChanged += (_, _) => RefreshPrerequisites();
         settings.SettingsChanged += (_, _) => dispatcher.Post(RefreshPrerequisites);
         session.Changed += (_, _) => dispatcher.Post(() => ApplyPlan(session.Plan));
+        session.SelectionChanged += (_, _) => dispatcher.Post(RefreshSelection);
         transfer.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TransferViewModel.State))
@@ -123,6 +125,13 @@ public sealed partial class ImportViewModel : ObservableObject
 
     public bool HasVisuallyUnchecked => VisuallyUncheckedText.Length > 0;
 
+    /// <summary>Shown when the user deselected items on the review screen.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectionText))]
+    public partial string SelectionText { get; private set; } = string.Empty;
+
+    public bool HasSelectionText => SelectionText.Length > 0;
+
     [ObservableProperty]
     public partial string TransferSizeText { get; private set; } = string.Empty;
 
@@ -195,6 +204,15 @@ public sealed partial class ImportViewModel : ObservableObject
         }
     }
 
+    private void RefreshSelection()
+    {
+        var selectable = _session.Plan?.Items.Where(item => item.Status != AssetStatus.ExactDuplicate).ToList() ?? [];
+        var selected = selectable.Count(_session.IsSelected);
+        SelectionText = selected < selectable.Count
+            ? Strings.Format(Strings.SelectionOnPlanFormat, selected, selectable.Count)
+            : string.Empty;
+    }
+
     private void RefreshPrerequisites()
     {
         PrerequisiteMessage = !_device.IsConnected
@@ -221,5 +239,6 @@ public sealed partial class ImportViewModel : ObservableObject
         PossibleDuplicateText = plan.PossibleDuplicateCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
         PossibleDuplicateExplanation = plan.PossibleDuplicateCount > 0 ? Strings.Format(Strings.PossibleDuplicatesExplanation, plan.PossibleDuplicateCount) : string.Empty;
         VisuallyUncheckedText = plan.VisuallyUncheckedImages > 0 ? Strings.Format(Strings.VisuallyUncheckedFormat, plan.VisuallyUncheckedImages) : string.Empty;
+        RefreshSelection();
     }
 }

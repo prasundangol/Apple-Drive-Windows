@@ -12,9 +12,14 @@ namespace AppleDrive.Testing;
 public static class MediaFixtures
 {
     /// <summary>A TIFF/EXIF block with the given tags (values like <c>2024:03:15 09:30:00</c> and <c>+05:45</c>).</summary>
-    public static byte[] Exif(string? dateTimeOriginal, string? offsetTimeOriginal = null, string? dateTime = null, bool bigEndian = false)
+    public static byte[] Exif(string? dateTimeOriginal, string? offsetTimeOriginal = null, string? dateTime = null, bool bigEndian = false, ushort? orientation = null)
     {
         var ifd0 = new List<(ushort Tag, ushort Type, byte[] Value)>();
+        if (orientation is { } value)
+        {
+            ifd0.Add((0x0112, 3, bigEndian ? [(byte)(value >> 8), (byte)value] : [(byte)value, (byte)(value >> 8)]));
+        }
+
         var exif = new List<(ushort Tag, ushort Type, byte[] Value)>();
         if (dateTime is not null)
         {
@@ -46,7 +51,7 @@ public static class MediaFixtures
         void WriteIfd(int start, List<(ushort Tag, ushort Type, byte[] Value)> entries, int? exifPointer)
         {
             var target = buffer.AsSpan();
-            var all = entries.Select(e => (e.Tag, e.Type, Count: (uint)e.Value.Length, e.Value)).ToList();
+            var all = entries.Select(e => (e.Tag, e.Type, Count: (uint)(e.Type == 3 ? e.Value.Length / 2 : e.Value.Length), e.Value)).ToList();
             if (exifPointer is { } pointer)
             {
                 all.Add((0x8769, 4, 1u, BitConverter.GetBytes(pointer)));
@@ -96,6 +101,16 @@ public static class MediaFixtures
         Segment(stream, 0xDA, [1, 1, 0, 0, 0x3F, 0]);
         stream.Write(RandomNumberGenerator.GetBytes(payload).Select(b => b == 0xFF ? (byte)0 : b).ToArray());
         stream.Write([0xFF, 0xD9]);
+        return stream.ToArray();
+    }
+
+    /// <summary>Inserts an EXIF APP1 segment right after the start of an existing JPEG.</summary>
+    public static byte[] WithExif(byte[] jpeg, byte[] exif)
+    {
+        using var stream = new MemoryStream();
+        stream.Write(jpeg.AsSpan(0, 2));
+        Segment(stream, 0xE1, [.. "Exif\0\0"u8, .. exif]);
+        stream.Write(jpeg.AsSpan(2));
         return stream.ToArray();
     }
 

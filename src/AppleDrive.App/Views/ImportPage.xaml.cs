@@ -18,6 +18,9 @@ public sealed partial class ImportPage : Microsoft.UI.Xaml.Controls.Page
     public Visibility IsNotEmpty(string? value) =>
         string.IsNullOrEmpty(value) ? Visibility.Collapsed : Visibility.Visible;
 
+    private void OnReviewFiles(object sender, RoutedEventArgs e) =>
+        Frame.Navigate(typeof(ReviewPage), null, new Microsoft.UI.Xaml.Media.Animation.DrillInNavigationTransitionInfo());
+
     /// <summary>x:Bind helper: inverse of a boolean visibility.</summary>
     public Visibility IsFalse(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
 }

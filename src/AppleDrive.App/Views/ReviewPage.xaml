@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="AppleDrive.App.Views.ReviewPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AppleDrive.App.Views"
+    xmlns:res="using:AppleDrive.Presentation.Resources"
+    xmlns:vm="using:AppleDrive.Presentation.ViewModels">
+
+    <Grid Padding="32,24,32,0" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button
+                VerticalAlignment="Center"
+                Click="OnBack"
+                Style="{StaticResource NavigationBackButtonNormalStyle}"
+                ToolTipService.ToolTip="{x:Bind res:Strings.Back}"
+                AutomationProperties.Name="{x:Bind res:Strings.Back}" />
+            <TextBlock
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                Style="{StaticResource TitleTextBlockStyle}"
+                Text="{x:Bind res:Strings.ReviewTitle}"
+                AutomationProperties.HeadingLevel="Level1" />
+            <TextBlock
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                Style="{StaticResource BodyStrongTextBlockStyle}"
+                Text="{x:Bind ViewModel.SelectionSummary, Mode=OneWay}"
+                AutomationProperties.LiveSetting="Polite" />
+        </Grid>
+
+        <!-- Filters and selection -->
+        <StackPanel Grid.Row="1" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox
+                    Width="220"
+                    PlaceholderText="{x:Bind res:Strings.SearchPlaceholder}"
+                    Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    AutomationProperties.Name="{x:Bind res:Strings.SearchPlaceholder}" />
+                <ComboBox
+                    MinWidth="170"
+                    ItemsSource="{x:Bind StatusOptions}"
+                    SelectedIndex="{x:Bind ViewModel.StatusFilterIndex, Mode=TwoWay}"
+                    AutomationProperties.Name="{x:Bind res:Strings.FilterStatusLabel}" />
+                <ComboBox
+                    MinWidth="160"
+                    ItemsSource="{x:Bind TypeOptions}"
+                    SelectedIndex="{x:Bind ViewModel.TypeFilterIndex, Mode=TwoWay}"
+                    AutomationProperties.Name="{x:Bind res:Strings.FilterTypeLabel}" />
+                <ComboBox
+                    MinWidth="120"
+                    ItemsSource="{x:Bind ViewModel.YearOptions, Mode=OneWay}"
+                    SelectedIndex="{x:Bind ViewModel.YearIndex, Mode=TwoWay}"
+                    AutomationProperties.Name="{x:Bind res:Strings.FilterYearLabel}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <ComboBox
+                    MinWidth="150"
+                    ItemsSource="{x:Bind SortOptions}"
+                    SelectedIndex="{x:Bind ViewModel.SortIndex, Mode=TwoWay}"
+                    ToolTipService.ToolTip="{x:Bind res:Strings.SortLabel}"
+                    AutomationProperties.Name="{x:Bind res:Strings.SortLabel}" />
+                <Button Command="{x:Bind ViewModel.SelectAllCommand}" Content="{x:Bind res:Strings.SelectAll}" />
+                <Button Command="{x:Bind ViewModel.SelectNoneCommand}" Content="{x:Bind res:Strings.SelectNone}" />
+                <Button Command="{x:Bind ViewModel.SelectOnlyNewCommand}" Content="{x:Bind res:Strings.SelectOnlyNew}" />
+                <ToggleSwitch
+                    Margin="16,0,0,0"
+                    IsOn="{x:Bind ViewModel.IncludePossibleDuplicates, Mode=TwoWay}"
+                    OffContent="{x:Bind res:Strings.IncludePossibleDuplicatesToggle}"
+                    OnContent="{x:Bind res:Strings.IncludePossibleDuplicatesToggle}"
+                    Visibility="{x:Bind ViewModel.HasPossibleDuplicates, Mode=OneWay}"
+                    AutomationProperties.Name="{x:Bind res:Strings.IncludePossibleDuplicatesToggle}" />
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock
+            Grid.Row="2"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Text="{x:Bind ViewModel.ShownSummary, Mode=OneWay}" />
+
+        <!-- Items -->
+        <Grid Grid.Row="3">
+            <TextBlock
+                Margin="0,24,0,0"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="{x:Bind res:Strings.NoItemsMatch}"
+                Visibility="{x:Bind ViewModel.HasNoVisibleItems, Mode=OneWay}" />
+            <TextBlock
+                Margin="0,24,0,0"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="{x:Bind res:Strings.ReviewNoPlan}"
+                Visibility="{x:Bind local:Previews.Not(ViewModel.HasPlan), Mode=OneWay}" />
+
+            <ScrollViewer Padding="0,0,16,24">
+                <ItemsRepeater
+                    x:Name="ItemsGrid"
+                    ElementClearing="OnElementClearing"
+                    ElementPrepared="OnElementPrepared"
+                    ItemsSource="{x:Bind ViewModel.VisibleItems, Mode=OneWay}">
+                    <ItemsRepeater.Layout>
+                        <UniformGridLayout
+                            ItemsStretch="Fill"
+                            MinColumnSpacing="12"
+                            MinItemHeight="340"
+                            MinItemWidth="220"
+                            MinRowSpacing="12" />
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ReviewItemViewModel">
+                            <Border Padding="10" Style="{StaticResource CardStyle}">
+                                <Grid RowSpacing="6">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="160" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Preview: the phone item, and for duplicates the destination file beside it. -->
+                                    <Grid ColumnSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="{x:Bind local:Previews.SecondColumn(OtherPath)}" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" CornerRadius="4">
+                                            <FontIcon
+                                                FontSize="28"
+                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                Glyph="{x:Bind local:Previews.PlaceholderGlyph(IsVideo)}"
+                                                Visibility="{x:Bind local:Previews.Not(HasThumbnail), Mode=OneWay}"
+                                                AutomationProperties.AccessibilityView="Raw" />
+                                            <Image
+                                                Source="{x:Bind local:Previews.Load(Thumbnail), Mode=OneWay}"
+                                                Stretch="Uniform"
+                                                AutomationProperties.Name="{x:Bind Name}" />
+                                            <Border
+                                                Margin="4"
+                                                Padding="4,1"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Bottom"
+                                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                                CornerRadius="2"
+                                                Opacity="0.9"
+                                                Visibility="{x:Bind local:Previews.HasText(OtherPath)}">
+                                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind res:Strings.OnIphoneLabel}" />
+                                            </Border>
+                                        </Grid>
+                                        <Grid
+                                            Grid.Column="1"
+                                            Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                            CornerRadius="4"
+                                            Visibility="{x:Bind local:Previews.HasText(OtherPath)}">
+                                            <Image Source="{x:Bind local:Previews.Load(OtherThumbnail), Mode=OneWay}" Stretch="Uniform" />
+                                            <Border
+                                                Margin="4"
+                                                Padding="4,1"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Bottom"
+                                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                                CornerRadius="2"
+                                                Opacity="0.9">
+                                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind res:Strings.InDestinationLabel}" />
+                                            </Border>
+                                        </Grid>
+                                    </Grid>
+
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="{x:Bind Name}"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind local:Previews.Facts(KindText, SizeText, DateText)}" />
+                                    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="6">
+                                        <FontIcon FontSize="12" Glyph="{x:Bind local:Previews.StatusGlyph(Status)}" AutomationProperties.AccessibilityView="Raw" />
+                                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Text="{x:Bind StatusText}" />
+                                    </StackPanel>
+                                    <TextBlock
+                                        Grid.Row="4"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        IsTextSelectionEnabled="True"
+                                        MaxLines="2"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind DetailText}"
+                                        TextTrimming="CharacterEllipsis"
+                                        TextWrapping="Wrap"
+                                        ToolTipService.ToolTip="{x:Bind DetailText}"
+                                        Visibility="{x:Bind HasDetail}" />
+                                    <CheckBox
+                                        Grid.Row="5"
+                                        Content="{x:Bind SelectLabel}"
+                                        IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
+                                        Visibility="{x:Bind IsSelectable}"
+                                        AutomationProperties.Name="{x:Bind SelectAccessibleName}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>

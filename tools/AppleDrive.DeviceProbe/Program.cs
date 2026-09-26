@@ -5,6 +5,7 @@
 //
 // Usage: AppleDrive.DeviceProbe [--read <count>] [--copy-to <folder>]
 //                               [--reconnect-check <count>] [--thumbnails <count>] [--visual-check <folder>]
+//                               [--orientation-check <count>]
 //                               [--transfer <folder> [--organize flat|month|day] [--limit <items>]]
 //
 // --transfer runs the real analysis and transfer engine into <folder>, with a temporary index
@@ -26,6 +27,10 @@ var limit = 40;
 var reconnectCount = 0;
 var thumbnailCount = 0;
 string? visualCheck = null;
+var orientationCount = 0;
+string[]? previewNames = null;
+var earlyClose = args.Contains("--early-close-check");
+var earlyCloseDrain = args.Contains("--early-close-drain");
 for (var index = 0; index < args.Length - 1; index++)
 {
     if (args[index] == "--read" && int.TryParse(args[index + 1], out var parsed))
@@ -51,6 +56,16 @@ for (var index = 0; index < args.Length - 1; index++)
     if (args[index] == "--limit" && int.TryParse(args[index + 1], out var itemLimit))
     {
         limit = Math.Max(1, itemLimit);
+    }
+
+    if (args[index] == "--orientation-check" && int.TryParse(args[index + 1], out var orientations))
+    {
+        orientationCount = Math.Max(1, orientations);
+    }
+
+    if (args[index] == "--preview")
+    {
+        previewNames = args[index + 1].Split(',');
     }
 
     if (args[index] == "--visual-check")
@@ -230,6 +245,21 @@ if (reconnectCount > 0)
 if (thumbnailCount > 0)
 {
     await PipelineChecks.ThumbnailCheckAsync(source, assets, thumbnailCount);
+}
+
+if (earlyClose || earlyCloseDrain)
+{
+    return await PipelineChecks.EarlyCloseCheckAsync(source, iphone, assets, drain: earlyCloseDrain);
+}
+
+if (previewNames is not null)
+{
+    return await PipelineChecks.PreviewCheckAsync(source, assets, previewNames);
+}
+
+if (orientationCount > 0)
+{
+    return await PipelineChecks.OrientationCheckAsync(source, assets, orientationCount);
 }
 
 if (visualCheck is not null)

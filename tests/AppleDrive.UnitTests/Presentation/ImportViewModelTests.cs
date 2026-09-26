@@ -202,6 +202,38 @@ public sealed class ImportViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Items_deselected_on_the_review_screen_are_not_copied()
+    {
+        _phone.AddFile("Internal Storage/a/IMG_1.JPG", new byte[1_500]);
+        _phone.AddFile("Internal Storage/a/IMG_2.JPG", new byte[2_500]);
+        await ConnectPhoneAsync();
+        var viewModel = Create(new AppSettings { DestinationFolder = _destination.Path, Organization = FolderOrganization.Flat });
+        await viewModel.AnalyzeCommand.ExecuteAsync(null);
+
+        _session.SetSelected(_session.Plan!.Items.Single(item => item.Item.Primary.FileName == "IMG_2.JPG"), false);
+
+        Assert.Equal(Strings.Format(Strings.SelectionOnPlanFormat, 1, 2), viewModel.SelectionText);
+        await viewModel.Transfer.StartCommand.ExecuteAsync(null);
+
+        Assert.Contains(Assert.Single(_shell.Confirmations).Details, detail => detail.Key == Strings.ConfirmNewLabel && detail.Value == "1");
+        Assert.True(File.Exists(_destination.Combine("IMG_1.JPG")));
+        Assert.False(File.Exists(_destination.Combine("IMG_2.JPG")));
+    }
+
+    [Fact]
+    public async Task Nothing_can_start_when_every_item_is_deselected()
+    {
+        _phone.AddFile("Internal Storage/a/IMG_1.JPG", new byte[1_500]);
+        await ConnectPhoneAsync();
+        var viewModel = Create(new AppSettings { DestinationFolder = _destination.Path });
+        await viewModel.AnalyzeCommand.ExecuteAsync(null);
+
+        _session.SetSelected(_session.Plan!.Items, false);
+
+        Assert.False(viewModel.Transfer.StartCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task Start_is_unavailable_when_there_is_nothing_new()
     {
         var shared = new byte[1_000];
