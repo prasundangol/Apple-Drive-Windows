@@ -36,6 +36,7 @@ internal static class WpdKeys
     private static readonly Guid MediaProperties = new("2ED8BA05-0AD3-42DC-B0D0-BC95AC396AC8");
     private static readonly Guid ClientInfo = new("204D9F0C-2292-4080-9F42-40664E70F859");
     private static readonly Guid ResourceDefault = new("E81E79BE-34F0-41BF-B53F-F1A06AE87842");
+    private static readonly Guid ResourceThumbnail = new("C7C407BA-98FA-46B5-9960-23FEC124CFDE");
 
     public static readonly PropertyKey ObjectId = new(ObjectProperties, 2);
     public static readonly PropertyKey ObjectParentId = new(ObjectProperties, 3);
@@ -60,4 +61,7 @@ internal static class WpdKeys
     public static readonly PropertyKey ClientDesiredAccess = new(ClientInfo, 9);
 
     public static readonly PropertyKey ResourceDefaultKey = new(ResourceDefault, 0);
+
+    /// <summary>WPD_RESOURCE_THUMBNAIL: a small preview image the device keeps for the object.</summary>
+    public static readonly PropertyKey ResourceThumbnailKey = new(ResourceThumbnail, 0);
 }

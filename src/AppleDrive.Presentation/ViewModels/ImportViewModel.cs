@@ -89,7 +89,7 @@ public sealed partial class ImportViewModel : ObservableObject
 
     public bool HasPlan => Plan is not null;
 
-    public bool HasNothingNew => Plan is { TotalCount: > 0, NewCount: 0 };
+    public bool HasNothingNew => Plan is { TotalCount: > 0, HasWork: false };
 
     public bool ShowIntro => Plan is null && !IsAnalyzing && Transfer.IsIdle;
 
@@ -107,6 +107,21 @@ public sealed partial class ImportViewModel : ObservableObject
 
     [ObservableProperty]
     public partial string VideoText { get; private set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string PossibleDuplicateText { get; private set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPossibleDuplicates))]
+    public partial string PossibleDuplicateExplanation { get; private set; } = string.Empty;
+
+    public bool HasPossibleDuplicates => PossibleDuplicateExplanation.Length > 0;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVisuallyUnchecked))]
+    public partial string VisuallyUncheckedText { get; private set; } = string.Empty;
+
+    public bool HasVisuallyUnchecked => VisuallyUncheckedText.Length > 0;
 
     [ObservableProperty]
     public partial string TransferSizeText { get; private set; } = string.Empty;
@@ -161,6 +176,8 @@ public sealed partial class ImportViewModel : ObservableObject
         {
             AnalysisStage.ScanningPhone => Strings.StageScanningPhone,
             AnalysisStage.ScanningDestination => Strings.StageScanningDestination,
+            AnalysisStage.PreparingVisualCheck => Strings.StagePreparingVisualCheck,
+            AnalysisStage.ComparingVisually => Strings.StageComparingVisually,
             _ => Strings.StageCheckingDuplicates,
         };
 
@@ -201,5 +218,8 @@ public sealed partial class ImportViewModel : ObservableObject
         TransferSizeText = ByteSize.Format(plan.TransferBytes);
         DestinationText = plan.DestinationRoot;
         UnverifiedText = plan.UnverifiedFiles > 0 ? Strings.Format(Strings.UnverifiedFormat, plan.UnverifiedFiles) : string.Empty;
+        PossibleDuplicateText = plan.PossibleDuplicateCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+        PossibleDuplicateExplanation = plan.PossibleDuplicateCount > 0 ? Strings.Format(Strings.PossibleDuplicatesExplanation, plan.PossibleDuplicateCount) : string.Empty;
+        VisuallyUncheckedText = plan.VisuallyUncheckedImages > 0 ? Strings.Format(Strings.VisuallyUncheckedFormat, plan.VisuallyUncheckedImages) : string.Empty;
     }
 }

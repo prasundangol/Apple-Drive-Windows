@@ -4,7 +4,7 @@
 // Nothing on the phone is ever changed.
 //
 // Usage: AppleDrive.DeviceProbe [--read <count>] [--copy-to <folder>]
-//                               [--reconnect-check <count>]
+//                               [--reconnect-check <count>] [--thumbnails <count>] [--visual-check <folder>]
 //                               [--transfer <folder> [--organize flat|month|day] [--limit <items>]]
 //
 // --transfer runs the real analysis and transfer engine into <folder>, with a temporary index
@@ -24,6 +24,8 @@ string? transferTo = null;
 var organization = FolderOrganization.YearMonth;
 var limit = 40;
 var reconnectCount = 0;
+var thumbnailCount = 0;
+string? visualCheck = null;
 for (var index = 0; index < args.Length - 1; index++)
 {
     if (args[index] == "--read" && int.TryParse(args[index + 1], out var parsed))
@@ -49,6 +51,16 @@ for (var index = 0; index < args.Length - 1; index++)
     if (args[index] == "--limit" && int.TryParse(args[index + 1], out var itemLimit))
     {
         limit = Math.Max(1, itemLimit);
+    }
+
+    if (args[index] == "--visual-check")
+    {
+        visualCheck = Directory.CreateDirectory(args[index + 1]).FullName;
+    }
+
+    if (args[index] == "--thumbnails" && int.TryParse(args[index + 1], out var thumbs))
+    {
+        thumbnailCount = Math.Max(1, thumbs);
     }
 
     if (args[index] == "--reconnect-check" && int.TryParse(args[index + 1], out var reconnect))
@@ -213,6 +225,16 @@ if (reconnectCount > 0)
     {
         return check;
     }
+}
+
+if (thumbnailCount > 0)
+{
+    await PipelineChecks.ThumbnailCheckAsync(source, assets, thumbnailCount);
+}
+
+if (visualCheck is not null)
+{
+    return await PipelineChecks.VisualCheckAsync(source, visualCheck);
 }
 
 if (transferTo is not null)

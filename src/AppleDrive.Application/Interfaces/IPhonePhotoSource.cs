@@ -27,6 +27,12 @@ public interface IPhonePhotoSource : IAsyncDisposable
     /// </summary>
     Task<Result<Stream>> OpenAssetAsync(PhotoAsset asset, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Opens the small preview image the device keeps for an image, when it has one. Much cheaper
+    /// than reading the file. Subject to the same one-open-stream rule as <see cref="OpenAssetAsync"/>.
+    /// </summary>
+    Task<Result<Stream>> OpenThumbnailAsync(PhotoAsset asset, CancellationToken cancellationToken);
+
     /// <summary>Closes the connection, if any.</summary>
     Task DisconnectAsync();
 }

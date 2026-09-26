@@ -4,7 +4,7 @@ Apple Drive is a Windows desktop app that copies photos and videos from an iPhon
 
 Apple Drive never deletes or changes anything on your iPhone, never overwrites files on your PC, and never sends your photos anywhere. Everything runs locally and offline.
 
-> **Status:** early development. Detecting an iPhone, reading its media, destination indexing, exact duplicate detection and verified transfers with crash recovery work. Visually-similar duplicate detection and thumbnails are next. See [Roadmap](#roadmap).
+> **Status:** early development. Detecting an iPhone, reading its media, destination indexing, exact and visually-similar duplicate detection, and verified transfers with crash recovery work. Thumbnails and the media review screen are next. See [Roadmap](#roadmap).
 
 ---
 
@@ -16,6 +16,7 @@ Apple Drive never deletes or changes anything on your iPhone, never overwrites f
 | .NET SDK | .NET 10 SDK (10.0.400 or later). Pinned in `global.json`. |
 | IDE (optional) | Visual Studio 2022 17.14+ or Visual Studio 2026 with the **.NET desktop development** workload and **Windows App SDK C# templates**. Building from the command line needs only the SDK. |
 | Windows App SDK | Restored from NuGet (`Microsoft.WindowsAppSDK`). The app is self-contained, so no separate runtime install is needed. |
+| Image codecs | Built into Windows for JPEG, PNG, GIF, TIFF, BMP and (Windows 11) WebP. For HEIC photos, the free **HEIF Image Extensions** and **HEVC Video Extensions** from the Microsoft Store are needed to compare them visually; without them HEIC files are still copied and exact-duplicate checked, and the Import page says how many couldn't be compared. |
 
 ### NuGet packages
 
@@ -59,6 +60,8 @@ More checks:
 |---|---|
 | `--copy-to <folder>` | Also saves the files it reads (never overwriting), for making test fixtures. |
 | `--reconnect-check <n>` | Reads *n* files, reconnects, and reads them again by the same object id, confirming the content is identical. The transfer engine relies on this when it re-reads a suspicious file. |
+| `--thumbnails <n>` | Compares the visual fingerprint of each image's phone thumbnail (in all 8 orientations) with that of the full file, and reports the distances and timing. |
+| `--visual-check <folder>` | Runs the visual duplicate check with every phone image treated as new, against a folder that holds copies of them (use `--transfer` first). Each image should find its own copy; matches to other files are listed. |
 | `--transfer <folder> [--organize flat\|month\|day] [--limit <items>]` | Runs the real duplicate check and transfer engine into `<folder>`, with a throwaway index database (the app's own index is untouched), then reports what was copied, the speed, and any leftovers. |
 
 ---
@@ -203,7 +206,35 @@ The `.partial` path is recorded *before* the file is created, so a transfer inte
 4. **Live Photos** count as already imported only when *both* the image and the video exist. If only one does, the item is new and only the missing part is copied.
 5. **Moved files:** when a hash matches a record that is no longer found at its old path, the stale record is removed.
 6. **Files Apple Drive already transferred** are recognised from transfer history without reading the phone again, when the phone file has the same persistent id, name and size as that transfer, and the copy is still in the index, unchanged since (same size and modification time, same SHA-256). The proof is the SHA-256 verified during that transfer. If the copy was edited, moved or deleted, the phone file is read and compared as usual.
-7. **Perceptual hash (images only), coming in phase 8:** visually similar images (resized, recompressed, HEIC vs JPEG) will be flagged as *possible duplicates* and always shown to you for a decision. They are never skipped silently.
+7. **Visually similar images: possible duplicates.** A new phone image that *looks* like a destination image (resized, recompressed, converted from HEIC to JPEG, renamed, lightly edited) is flagged as a **possible duplicate**. It is shown to you and **never skipped unless you choose to**. Videos are not compared visually.
+
+### How the visual check works
+
+Perceptual *difference hashes* (dHash) are computed through the Windows Imaging Component decoders (JPEG, PNG, GIF, TIFF, BMP, WebP and, with the HEIF/HEVC extensions, HEIC). The image is scaled to a tiny grey grid and each bit records whether a pixel is brighter than its right-hand neighbour. So resizing, recompression and format changes barely change the hash, while different pictures differ in about half the bits.
+
+1. **Destination:** every image gets a 64-bit hash, computed once (four at a time) and stored in the index (`MediaFiles.PerceptualHash`). A changed file gets a new one.
+2. **Phone, first pass:** only images still classified as new are checked. The 64-bit hash comes from the small **thumbnail** the iPhone keeps (5–10 KB), not the whole file. Testing on a real iPhone showed that:
+   - thumbnails are stored as the sensor saw them, so portrait photos are sideways and front-camera shots are mirrored. The thumbnail is therefore hashed in all 8 orientations and the closest one counts.
+   - for saved or edited **JPEGs** the phone often keeps a thumbnail of a *different* version (31 of 110 JPEGs on the test phone). So JPEGs, which are small, are read in full instead.
+3. **Candidates:** destination images within 10 of 64 bits.
+4. **Confirmation:** each candidate is re-checked with a **256-bit** hash of both full images (the phone file is read only now), and must be within 36 of 256 bits. This second, much more selective stage rules out chance matches between unrelated photos in a large library.
+
+Thresholds, from test fixtures (resized, recompressed, PNG↔JPEG and slightly edited copies vs. 1,770 pairs of different pictures) and from a real iPhone:
+
+| | 64-bit distance | 256-bit distance |
+|---|---|---|
+| Same picture: resized, recompressed, converted, slightly edited | 0–4 | 0–22 |
+| Phone thumbnail vs its own full photo (real iPhone, 301 non-JPEG images) | 0–7 | — |
+| Different pictures (closest pair of 1,770) | 11 | 44 |
+| **Thresholds** | **≤ 10** | **≤ 36** |
+
+**Tested on a real iPhone:**
+
+- **Self-check:** with the destination holding copies of all 332 phone images and every image treated as new, all 332 found a match. The 8 that matched a different file were visually identical screenshots at distance 0, so there were no false positives across about 110,000 photo pairs.
+- **HEIC vs JPEG:** with 10 HEIC photos converted to half-size JPEGs under new names, all 10 were flagged (256-bit distance 0–3), plus the phone's 2 *edited* versions of those photos (`IMG_E…`, distance 4 and 14).
+- **Cost:** the check took 26 s in the app, reading 222 thumbnails and 121 full files.
+
+In the confirmation, **Also copy the N possible duplicates, keeping both versions** is ticked by default, because keeping both never loses a photo. Untick it to leave them on the phone. Reviewing them one by one, with side-by-side previews, comes with the media review screen.
 
 Tested on a real iPhone (441 items, 477 files) against a folder of 12 files copied from it, one renamed and one with a single byte changed. The check read only the 12 phone files that shared a size with a destination file and finished in under a second. The renamed copy was matched and the altered file was classified as new.
 
@@ -281,7 +312,7 @@ Tested against a simulated iPhone for: successful copies, read failures and retr
 5. ✅ SHA-256 exact duplicate detection
 6. ✅ Transfer engine: verified copies, folder organization by capture date, conflict-free names, progress, cancel, retry
 7. ✅ Crash recovery, faster re-check from transfer history, single instance
-8. Perceptual hashing
+8. ✅ Perceptual hashing: possible duplicates, shown and never skipped silently
 9. Thumbnails and media review UI
 10. History, filtering, accessibility polish, MSIX packaging
 

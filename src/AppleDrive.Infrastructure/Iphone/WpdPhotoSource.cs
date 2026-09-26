@@ -4,6 +4,7 @@ using AppleDrive.Domain.Entities;
 using AppleDrive.Domain.Enums;
 using AppleDrive.Domain.Results;
 using AppleDrive.Infrastructure.Iphone.Wpd;
+using AppleDrive.Infrastructure.Iphone.Wpd.Interop;
 using Microsoft.Extensions.Logging;
 
 namespace AppleDrive.Infrastructure.Iphone;
@@ -76,6 +77,21 @@ public sealed class WpdPhotoSource(ILogger<WpdPhotoSource> logger) : IPhonePhoto
         }
 
         return RunDeviceOperation<Stream>(() => connection.OpenRead(asset.Id, cancellationToken), "Opening a device file", cancellationToken);
+    }
+
+    public Task<Result<Stream>> OpenThumbnailAsync(PhotoAsset asset, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(asset);
+        var connection = _connection;
+        if (connection is null)
+        {
+            return Task.FromResult(Result<Stream>.Failure(new AppError(ErrorKind.DeviceNotFound, "No device is connected.")));
+        }
+
+        return RunDeviceOperation<Stream>(
+            () => connection.OpenRead(asset.Id, WpdKeys.ResourceThumbnailKey, cancellationToken),
+            "Opening a device thumbnail",
+            cancellationToken);
     }
 
     public async Task DisconnectAsync()

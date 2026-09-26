@@ -14,6 +14,7 @@ public sealed class FakeIPhonePhotoSource : IPhonePhotoSource
 {
     private readonly Dictionary<string, FakeFile> _files = new(StringComparer.Ordinal);
     private readonly Dictionary<string, byte[]> _nextDelivery = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, byte[]> _thumbnails = new(StringComparer.Ordinal);
     private int _openStreams;
 
     public DeviceConnectionStatus ConnectStatus { get; set; } = DeviceConnectionStatus.Connected;
@@ -114,6 +115,31 @@ public sealed class FakeIPhonePhotoSource : IPhonePhotoSource
         }
 
         return assets;
+    }
+
+    /// <summary>Gives an asset a device thumbnail (by default assets have none).</summary>
+    public void SetThumbnail(PhotoAsset asset, byte[] thumbnail) => _thumbnails[asset.Id] = thumbnail;
+
+    /// <summary>Number of times any thumbnail was opened.</summary>
+    public int ThumbnailOpenCount { get; private set; }
+
+    public Task<Result<Stream>> OpenThumbnailAsync(PhotoAsset asset, CancellationToken cancellationToken)
+    {
+        if (ConnectedDevice is null)
+        {
+            return Task.FromResult(Result<Stream>.Failure(new AppError(ErrorKind.DeviceDisconnected, "Not connected.")));
+        }
+
+        if (!_thumbnails.TryGetValue(asset.Id, out var thumbnail))
+        {
+            return Task.FromResult(Result<Stream>.Failure(new AppError(ErrorKind.SourceUnavailable, "No thumbnail.")));
+        }
+
+        ThumbnailOpenCount++;
+        var open = Interlocked.Increment(ref _openStreams);
+        MaxConcurrentStreams = Math.Max(MaxConcurrentStreams, open);
+        Stream stream = new FakeDeviceStream(new FakeFile(asset, thumbnail), () => Interlocked.Decrement(ref _openStreams));
+        return Task.FromResult(Result<Stream>.Success(stream));
     }
 
     public Task<Result<Stream>> OpenAssetAsync(PhotoAsset asset, CancellationToken cancellationToken)

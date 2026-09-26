@@ -177,7 +177,11 @@ internal sealed class WpdConnection : IDisposable
     /// Opens the default data resource of an object. The device supports one open stream at a
     /// time, so this waits until any previously opened stream has been disposed.
     /// </summary>
-    public WpdReadStream OpenRead(string objectId, CancellationToken cancellationToken)
+    public WpdReadStream OpenRead(string objectId, CancellationToken cancellationToken) =>
+        OpenRead(objectId, WpdKeys.ResourceDefaultKey, cancellationToken);
+
+    /// <summary>Opens a resource of an object, such as its thumbnail. Same one-stream rule as <see cref="OpenRead(string, CancellationToken)"/>.</summary>
+    public WpdReadStream OpenRead(string objectId, PropertyKey resource, CancellationToken cancellationToken)
     {
         _streamSlot.Wait(cancellationToken);
         var slotHandedOff = false;
@@ -190,7 +194,7 @@ internal sealed class WpdConnection : IDisposable
             {
                 ThrowIfDisposed();
                 Check(
-                    _resources.GetStream(objectId, WpdKeys.ResourceDefaultKey, WpdConstants.StgmRead, ref optimalBufferSize, out streamPointer),
+                    _resources.GetStream(objectId, resource, WpdConstants.StgmRead, ref optimalBufferSize, out streamPointer),
                     "Opening a file on the device");
             }
             finally

@@ -4,6 +4,7 @@ using AppleDrive.Application.Settings;
 using AppleDrive.Infrastructure.Database;
 using AppleDrive.Infrastructure.FileSystem;
 using AppleDrive.Infrastructure.Hashing;
+using AppleDrive.Infrastructure.Imaging;
 using AppleDrive.Infrastructure.Iphone;
 using AppleDrive.Infrastructure.Metadata;
 using AppleDrive.Infrastructure.Settings;
@@ -33,6 +34,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHashService, Sha256HashService>();
         services.AddSingleton<DestinationContentLookup>();
         services.AddSingleton<ExactDuplicateDetector>();
+        services.AddSingleton<IPerceptualHashService, WicPerceptualHashService>();
+        services.AddSingleton<VisualDuplicateDetector>();
         services.AddSingleton<ImportAnalysisService>();
         services.AddSingleton<ImportSession>();
 

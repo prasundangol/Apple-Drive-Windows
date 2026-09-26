@@ -135,4 +135,13 @@
   <data name="DurationHoursFormat" xml:space="preserve"><value>{0}h {1}m</value></data>
   <data name="DurationMinutesFormat" xml:space="preserve"><value>{0}m {1}s</value></data>
   <data name="DurationSecondsFormat" xml:space="preserve"><value>{0}s</value></data>
+  <data name="StagePreparingVisualCheck" xml:space="preserve"><value>Preparing to compare photos visually…</value></data>
+  <data name="StageComparingVisually" xml:space="preserve"><value>Looking for similar photos…</value></data>
+  <data name="PossibleDuplicatesLabel" xml:space="preserve"><value>Possible duplicates</value></data>
+  <data name="PossibleDuplicatesExplanation" xml:space="preserve"><value>{0:N0} photos look like ones already in the destination (for example a resized or converted copy) but aren&apos;t identical. You choose whether to copy them; they&apos;re never skipped without asking.</value></data>
+  <data name="ConfirmPossibleDuplicatesLabel" xml:space="preserve"><value>Possible duplicates</value></data>
+  <data name="ConfirmIncludePossibleDuplicatesFormat" xml:space="preserve"><value>Also copy the {0:N0} possible duplicates ({1}), keeping both versions</value></data>
+  <data name="VisuallyUncheckedFormat" xml:space="preserve"><value>{0:N0} photos couldn&apos;t be compared visually (their format can&apos;t be decoded on this PC), so they&apos;re treated as new.</value></data>
+  <data name="PossibleDuplicatesCopiedLabel" xml:space="preserve"><value>Possible duplicates copied</value></data>
+  <data name="PossibleDuplicatesSkippedLabel" xml:space="preserve"><value>Possible duplicates not copied</value></data>
 </root>

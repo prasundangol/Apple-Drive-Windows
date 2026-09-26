@@ -4,6 +4,7 @@ using AppleDrive.Domain.Enums;
 using AppleDrive.Domain.Results;
 using AppleDrive.Infrastructure.FileSystem;
 using AppleDrive.Infrastructure.Hashing;
+using AppleDrive.Infrastructure.Imaging;
 using AppleDrive.Infrastructure.Metadata;
 using AppleDrive.Presentation.Resources;
 using AppleDrive.Presentation.ViewModels;
@@ -174,6 +175,33 @@ public sealed class ImportViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Possible_duplicates_are_shown_and_left_out_when_the_user_unticks_them()
+    {
+        File.WriteAllBytes(_destination.Combine("Holiday.jpg"), TestImages.Render(21, 400, 300));
+        var photo = _phone.AddFile("Internal Storage/a/IMG_1.PNG", TestImages.Render(21, 1200, 900, TestImageFormat.Png));
+        _phone.SetThumbnail(photo, TestImages.Render(21, 160, 120));
+        await ConnectPhoneAsync();
+        var viewModel = Create(new AppSettings { DestinationFolder = _destination.Path, Organization = FolderOrganization.Flat });
+        await viewModel.AnalyzeCommand.ExecuteAsync(null);
+
+        Assert.Equal("1", viewModel.PossibleDuplicateText);
+        Assert.True(viewModel.HasPossibleDuplicates);
+        Assert.False(viewModel.HasNothingNew);
+        Assert.True(viewModel.Transfer.StartCommand.CanExecute(null));
+
+        _shell.OptionResult = false;
+        await viewModel.Transfer.StartCommand.ExecuteAsync(null);
+
+        var confirmation = Assert.Single(_shell.Confirmations);
+        Assert.NotNull(confirmation.OptionLabel);
+        Assert.True(confirmation.OptionChecked);
+        Assert.Contains(confirmation.Details, detail => detail.Key == Strings.ConfirmPossibleDuplicatesLabel && detail.Value == "1");
+        Assert.False(File.Exists(_destination.Combine("IMG_1.PNG")));
+        Assert.True(viewModel.Transfer.HasPossibleDuplicates);
+        Assert.Equal(Strings.PossibleDuplicatesSkippedLabel, viewModel.Transfer.PossibleDuplicatesLabel);
+    }
+
+    [Fact]
     public async Task Start_is_unavailable_when_there_is_nothing_new()
     {
         var shared = new byte[1_000];
@@ -201,7 +229,8 @@ public sealed class ImportViewModelTests : IDisposable
             new DestinationScanner(NullLogger<DestinationScanner>.Instance), _repository, TimeProvider.System, NullLogger<DestinationIndexService>.Instance);
         var lookup = new DestinationContentLookup(_repository, new Sha256HashService(), NullLogger<DestinationContentLookup>.Instance);
         var detector = new ExactDuplicateDetector(_phone, lookup, _history, new Sha256HashService(), NullLogger<ExactDuplicateDetector>.Instance);
-        var analysis = new ImportAnalysisService(phoneScan, index, detector, _session, NullLogger<ImportAnalysisService>.Instance);
+        var visual = new VisualDuplicateDetector(_phone, _repository, new WicPerceptualHashService(NullLogger<WicPerceptualHashService>.Instance), NullLogger<VisualDuplicateDetector>.Instance);
+        var analysis = new ImportAnalysisService(phoneScan, index, detector, visual, _session, NullLogger<ImportAnalysisService>.Instance);
         var transfers = new MediaTransferService(
             _phone,
             new Sha256HashService(),

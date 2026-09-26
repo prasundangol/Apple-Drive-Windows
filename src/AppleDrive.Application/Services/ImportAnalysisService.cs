@@ -8,19 +8,23 @@ public enum AnalysisStage
     ScanningPhone,
     ScanningDestination,
     CheckingDuplicates,
+    PreparingVisualCheck,
+    ComparingVisually,
 }
 
 /// <summary>Where an analysis is: the stage and a count meaningful for that stage.</summary>
 public sealed record AnalysisProgress(AnalysisStage Stage, int Done, int? Total = null);
 
 /// <summary>
-/// Runs the pre-import analysis: scan the phone, bring the destination index up to date, then
-/// classify every phone item. The resulting plan is stored in the <see cref="ImportSession"/>.
+/// Runs the pre-import analysis: scan the phone, bring the destination index up to date, classify
+/// every phone item byte for byte, then look for visually similar images among the new ones.
+/// The resulting plan is stored in the <see cref="ImportSession"/>.
 /// </summary>
 public sealed class ImportAnalysisService(
     PhoneScanService phoneScan,
     DestinationIndexService destinationIndex,
     ExactDuplicateDetector duplicateDetector,
+    VisualDuplicateDetector visualDetector,
     ImportSession session,
     ILogger<ImportAnalysisService> logger)
 {
@@ -66,8 +70,20 @@ public sealed class ImportAnalysisService(
             return plan.Error;
         }
 
-        session.SetPlan(plan.Value);
-        return plan.Value;
+        var visual = await visualDetector.CheckAsync(
+            plan.Value,
+            Relay<VisualCheckProgress>(progress, value => new AnalysisProgress(
+                value.Stage == VisualCheckStage.PreparingDestination ? AnalysisStage.PreparingVisualCheck : AnalysisStage.ComparingVisually,
+                value.Done,
+                value.Total)),
+            cancellationToken).ConfigureAwait(false);
+        if (!visual.IsSuccess)
+        {
+            return visual.Error;
+        }
+
+        session.SetPlan(visual.Value);
+        return visual.Value;
     }
 
     private static IProgress<T>? Relay<T>(IProgress<AnalysisProgress>? target, Func<T, AnalysisProgress> map) =>

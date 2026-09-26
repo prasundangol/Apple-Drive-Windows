@@ -20,11 +20,14 @@ public sealed class FakeShellServices : IShellServices
     /// <summary>Answer given to confirmation dialogs.</summary>
     public bool ConfirmResult { get; set; } = true;
 
+    /// <summary>State of the dialog check box when confirmed; <c>null</c> keeps its initial state.</summary>
+    public bool? OptionResult { get; set; }
+
     public List<ConfirmationRequest> Confirmations { get; } = [];
 
-    public Task<bool> ConfirmAsync(ConfirmationRequest request)
+    public Task<ConfirmationResult> ConfirmAsync(ConfirmationRequest request)
     {
         Confirmations.Add(request);
-        return Task.FromResult(ConfirmResult);
+        return Task.FromResult(new ConfirmationResult(ConfirmResult, OptionResult ?? request.OptionChecked));
     }
 }

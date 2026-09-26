@@ -7,13 +7,15 @@ namespace AppleDrive.Application.Services;
 /// <param name="Items">Classified items; only their components that need transferring are copied.</param>
 /// <param name="DestinationRoot">The destination folder the items were classified against.</param>
 /// <param name="SkipExactDuplicates">When false, files identical to one already in the destination are copied too.</param>
+/// <param name="IncludePossibleDuplicates">When false, items that only look like an existing image are not copied.</param>
 /// <param name="DeviceName">Recorded in transfer history.</param>
 public sealed record TransferRequest(
     IReadOnlyList<ItemClassification> Items,
     string DestinationRoot,
     FolderOrganization Organization,
     bool SkipExactDuplicates = true,
-    string? DeviceName = null);
+    string? DeviceName = null,
+    bool IncludePossibleDuplicates = true);
 
 /// <summary>A snapshot of a running transfer.</summary>
 /// <param name="ItemsDone">Items with something to copy that are finished (transferred, found to be duplicates, or failed).</param>
@@ -51,6 +53,9 @@ public enum ItemTransferStatus
 
     /// <summary>Not attempted because the transfer was cancelled or stopped first.</summary>
     NotAttempted,
+
+    /// <summary>A possible duplicate the user chose not to copy.</summary>
+    PossibleDuplicateSkipped,
 }
 
 /// <summary>What happened to one file of an item.</summary>
@@ -102,6 +107,11 @@ public sealed class ItemTransferOutcome(ItemClassification item, IReadOnlyList<C
                 : ItemTransferStatus.NotAttempted;
         }
 
+        if (components.Any(component => component.Status == ItemTransferStatus.PossibleDuplicateSkipped))
+        {
+            return ItemTransferStatus.PossibleDuplicateSkipped;
+        }
+
         if (components.Any(component => component.Status == ItemTransferStatus.Transferred))
         {
             return ItemTransferStatus.Transferred;
@@ -136,6 +146,8 @@ public sealed class TransferRunResult
         SkippedCount = items.Count(item => item.Status is ItemTransferStatus.AlreadyExists or ItemTransferStatus.DuplicateFound);
         FailedCount = items.Count(item => item.Status == ItemTransferStatus.Failed);
         NotAttemptedCount = items.Count(item => item.Status == ItemTransferStatus.NotAttempted);
+        PossibleDuplicatesSkippedCount = items.Count(item => item.Status == ItemTransferStatus.PossibleDuplicateSkipped);
+        PossibleDuplicatesCopiedCount = items.Count(item => item.Status == ItemTransferStatus.Transferred && item.Item.Status == AssetStatus.PossibleDuplicate);
     }
 
     public string SessionId { get; }
@@ -161,6 +173,12 @@ public sealed class TransferRunResult
     public int FailedCount { get; }
 
     public int NotAttemptedCount { get; }
+
+    /// <summary>Possible duplicates left out because the user chose not to copy them.</summary>
+    public int PossibleDuplicatesSkippedCount { get; }
+
+    /// <summary>Possible duplicates that were copied, kept alongside the similar file.</summary>
+    public int PossibleDuplicatesCopiedCount { get; }
 
     public IEnumerable<ItemTransferOutcome> FailedItems => Items.Where(item => item.Status == ItemTransferStatus.Failed);
 

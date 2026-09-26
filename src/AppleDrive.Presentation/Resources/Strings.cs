@@ -277,6 +277,24 @@ public static class Strings
 
     public static string DurationSecondsFormat => Get();
 
+    public static string StagePreparingVisualCheck => Get();
+
+    public static string StageComparingVisually => Get();
+
+    public static string PossibleDuplicatesLabel => Get();
+
+    public static string PossibleDuplicatesExplanation => Get();
+
+    public static string ConfirmPossibleDuplicatesLabel => Get();
+
+    public static string ConfirmIncludePossibleDuplicatesFormat => Get();
+
+    public static string VisuallyUncheckedFormat => Get();
+
+    public static string PossibleDuplicatesCopiedLabel => Get();
+
+    public static string PossibleDuplicatesSkippedLabel => Get();
+
     /// <summary>Formats a resource string with the current culture.</summary>
     public static string Format(string format, params object?[] arguments) =>
         string.Format(CultureInfo.CurrentCulture, format, arguments);

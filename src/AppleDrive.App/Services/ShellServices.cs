@@ -31,7 +31,7 @@ internal sealed class ShellServices : IShellServices
         }
     }
 
-    public async Task<bool> ConfirmAsync(ConfirmationRequest request)
+    public async Task<ConfirmationResult> ConfirmAsync(ConfirmationRequest request)
     {
         var details = new Grid { ColumnSpacing = 24, RowSpacing = 8 };
         details.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -60,6 +60,13 @@ internal sealed class ShellServices : IShellServices
 
         var content = new StackPanel { Spacing = 16 };
         content.Children.Add(details);
+        CheckBox? option = null;
+        if (request.OptionLabel is { } optionLabel)
+        {
+            option = new CheckBox { Content = new TextBlock { Text = optionLabel, TextWrapping = TextWrapping.WrapWholeWords }, IsChecked = request.OptionChecked };
+            content.Children.Add(option);
+        }
+
         if (request.Footnote is { } footnote)
         {
             content.Children.Add(new TextBlock
@@ -80,6 +87,7 @@ internal sealed class ShellServices : IShellServices
             DefaultButton = ContentDialogButton.Primary,
             RequestedTheme = (App.MainWindow.Content as FrameworkElement)?.ActualTheme ?? ElementTheme.Default,
         };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        var confirmed = await dialog.ShowAsync() == ContentDialogResult.Primary;
+        return new ConfirmationResult(confirmed, option?.IsChecked == true);
     }
 }

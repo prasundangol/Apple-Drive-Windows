@@ -140,12 +140,22 @@ public sealed partial class TransferViewModel : ObservableObject
     [ObservableProperty]
     public partial string RetryText { get; private set; } = string.Empty;
 
+    /// <summary>Possible duplicates in the last run: how many were copied, or not copied if the user left them out.</summary>
+    [ObservableProperty]
+    public partial string PossibleDuplicatesValue { get; private set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string PossibleDuplicatesLabel { get; private set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool HasPossibleDuplicates { get; private set; }
+
     /// <summary>The last run left items to copy (failed or not reached).</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RetryCommand))]
     public partial bool CanRetryItems { get; private set; }
 
-    private bool CanStart() => IsIdle && _session.Plan is { NewCount: > 0 };
+    private bool CanStart() => IsIdle && _session.Plan is { HasWork: true };
 
     [RelayCommand(CanExecute = nameof(CanStart))]
     private async Task StartAsync()
@@ -157,19 +167,32 @@ public sealed partial class TransferViewModel : ObservableObject
         }
 
         var settings = _settings.Current;
-        var confirmed = await _shell.ConfirmAsync(new ConfirmationRequest(
+        List<KeyValuePair<string, string>> details =
+        [
+            new(Strings.ConfirmNewLabel, Count(plan.NewCount)),
+            new(Strings.ConfirmDuplicatesLabel, Count(plan.ExactDuplicateCount)),
+        ];
+        if (plan.PossibleDuplicateCount > 0)
+        {
+            details.Add(new(Strings.ConfirmPossibleDuplicatesLabel, Count(plan.PossibleDuplicateCount)));
+        }
+
+        details.Add(new(Strings.ConfirmSizeLabel, ByteSize.Format(plan.TransferBytes)));
+        details.Add(new(Strings.DestinationLabel, plan.DestinationRoot));
+        details.Add(new(Strings.ConfirmOrganizationLabel, OrganizationText(settings.Organization)));
+
+        // Possible duplicates are copied unless the user unticks the box: keeping both never loses a photo.
+        var answer = await _shell.ConfirmAsync(new ConfirmationRequest(
             Strings.ConfirmTransferTitle,
-            [
-                new(Strings.ConfirmNewLabel, Count(plan.NewCount)),
-                new(Strings.ConfirmDuplicatesLabel, Count(plan.ExactDuplicateCount)),
-                new(Strings.ConfirmSizeLabel, ByteSize.Format(plan.TransferBytes)),
-                new(Strings.DestinationLabel, plan.DestinationRoot),
-                new(Strings.ConfirmOrganizationLabel, OrganizationText(settings.Organization)),
-            ],
+            details,
             Strings.ConfirmFootnote,
             Strings.StartTransfer,
-            Strings.Cancel));
-        if (!confirmed || !IsIdle)
+            Strings.Cancel,
+            plan.PossibleDuplicateCount > 0
+                ? Strings.Format(Strings.ConfirmIncludePossibleDuplicatesFormat, plan.PossibleDuplicateCount, ByteSize.Format(plan.PossibleDuplicateBytes))
+                : null,
+            OptionChecked: true));
+        if (!answer.Confirmed || !IsIdle)
         {
             return;
         }
@@ -179,7 +202,8 @@ public sealed partial class TransferViewModel : ObservableObject
             plan.DestinationRoot,
             settings.Organization,
             settings.SkipExactDuplicates,
-            _session.LastPhoneScan?.Device.FriendlyName));
+            _session.LastPhoneScan?.Device.FriendlyName,
+            IncludePossibleDuplicates: plan.PossibleDuplicateCount == 0 || answer.OptionChecked));
     }
 
     private bool CanCancel() => IsTransferring && !IsCancelling;
@@ -372,6 +396,10 @@ public sealed partial class TransferViewModel : ObservableObject
             .ToList();
         RetryText = result.FailedCount > 0 ? Strings.RetryFailed : Strings.CopyRemaining;
         CanRetryItems = result.FailedCount > 0 || result.NotAttemptedCount > 0;
+        (PossibleDuplicatesValue, PossibleDuplicatesLabel) = result.PossibleDuplicatesSkippedCount > 0
+            ? (Count(result.PossibleDuplicatesSkippedCount), Strings.PossibleDuplicatesSkippedLabel)
+            : (Count(result.PossibleDuplicatesCopiedCount), Strings.PossibleDuplicatesCopiedLabel);
+        HasPossibleDuplicates = result.PossibleDuplicatesSkippedCount + result.PossibleDuplicatesCopiedCount > 0;
     }
 
     private static string Count(int value) => value.ToString("N0", CultureInfo.CurrentCulture);

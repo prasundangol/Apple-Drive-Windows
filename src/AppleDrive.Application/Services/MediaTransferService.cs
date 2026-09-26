@@ -992,6 +992,18 @@ public sealed class MediaTransferService(
             for (var index = 0; index < request.Items.Count; index++)
             {
                 var item = request.Items[index];
+                if (item.Status == AssetStatus.PossibleDuplicate && !request.IncludePossibleDuplicates)
+                {
+                    // The user chose not to copy items that only look like an existing file.
+                    _outcomes[index] = new ItemTransferOutcome(
+                        item,
+                        item.Components.Select(component => component.Status == AssetStatus.ExactDuplicate
+                            ? new ComponentTransferOutcome(component, ItemTransferStatus.AlreadyExists, component.ExistingPath)
+                            : new ComponentTransferOutcome(component, ItemTransferStatus.PossibleDuplicateSkipped, component.SimilarPath)).ToList());
+                    _skipped++;
+                    continue;
+                }
+
                 var toCopy = item.Components.Where(component => !request.SkipExactDuplicates || component.NeedsTransfer).ToList();
                 if (toCopy.Count == 0)
                 {

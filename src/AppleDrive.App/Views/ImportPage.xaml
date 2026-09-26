@@ -129,6 +129,13 @@
                             <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.ExactDuplicatesLabel}" />
                         </StackPanel>
                         <StackPanel Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon FontSize="16" Glyph="&#xE7B3;" AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.PossibleDuplicateText, Mode=OneWay}" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.PossibleDuplicatesLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
                             <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.VideoText, Mode=OneWay}" />
                             <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.VideosLabel}" />
                         </StackPanel>
@@ -147,6 +154,18 @@
                         IsClosable="False"
                         IsOpen="{x:Bind ViewModel.HasUnverified, Mode=OneWay}"
                         Message="{x:Bind ViewModel.UnverifiedText, Mode=OneWay}"
+                        Severity="Informational" />
+
+                    <InfoBar
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.HasPossibleDuplicates, Mode=OneWay}"
+                        Message="{x:Bind ViewModel.PossibleDuplicateExplanation, Mode=OneWay}"
+                        Severity="Informational" />
+
+                    <InfoBar
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.HasVisuallyUnchecked, Mode=OneWay}"
+                        Message="{x:Bind ViewModel.VisuallyUncheckedText, Mode=OneWay}"
                         Severity="Informational" />
 
                     <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.HasNothingNew, Mode=OneWay}">
@@ -286,6 +305,10 @@
                         <StackPanel Margin="0,0,0,12">
                             <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.BytesText, Mode=OneWay}" />
                             <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind res:Strings.CopiedLabel}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12" Visibility="{x:Bind ViewModel.Transfer.HasPossibleDuplicates, Mode=OneWay}">
+                            <TextBlock Style="{StaticResource StatValueStyle}" Text="{x:Bind ViewModel.Transfer.PossibleDuplicatesValue, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource StatLabelStyle}" Text="{x:Bind ViewModel.Transfer.PossibleDuplicatesLabel, Mode=OneWay}" />
                         </StackPanel>
                     </VariableSizedWrapGrid>
 
